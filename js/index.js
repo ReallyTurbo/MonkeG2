@@ -31,7 +31,7 @@ $(document).on('click', '#gamesList li', function (event) {
 
    
     openGameInNewTab(gameUrl);
-
+    window.location.href = '/games';
     return false;
 });
 
@@ -152,10 +152,11 @@ function openGameInNewTab(gameUrl) {
 
     try {
 
-        fullUrl = new URL(
-            gameUrl,
-            window.location.origin
-        ).href;
+        fullUrl =
+            new URL(
+                gameUrl,
+                window.location.origin
+            ).href;
 
     } catch (error) {
 
@@ -168,15 +169,19 @@ function openGameInNewTab(gameUrl) {
         return;
     }
 
+
     console.log(
-        'Opening actual game:',
+        'Opening game:',
         fullUrl
     );
 
 
     /*
-     * 1. Open the ACTUAL GAME in a new tab.
+     * Open in a completely new tab.
+     *
+     * The current MonkeyGG2 page remains open.
      */
+
     const newTab =
         window.open(
             fullUrl,
@@ -185,34 +190,26 @@ function openGameInNewTab(gameUrl) {
 
 
     /*
-     * If popup blocking prevents the new tab,
-     * don't change the current page.
+     * If popup blocking prevents the tab from opening,
+     * provide a fallback.
      */
+
     if (!newTab) {
 
         alert(
             'Your browser blocked the new game tab. Please allow popups for this site.'
         );
 
-        return;
+    } else {
+
+        try {
+            newTab.opener = null;
+        } catch (error) {
+            // Ignore
+        }
+
     }
-
-
-    try {
-        newTab.opener = null;
-    } catch (error) {
-        // Ignore
-    }
-
-
-    /*
-     * 2. Switch THIS tab to the games page.
-     *
-     * Change /games to whatever your actual
-     * games-page URL is.
-     */
 }
-
 
     console.log(
         'Opening game:',
