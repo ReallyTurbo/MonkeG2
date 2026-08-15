@@ -8,17 +8,44 @@
 
 let currentMenu = $('.homepage');
 
-window.inGame = false;
-window.hold = false;
-window.click = 0;
+let inGame = false;
 
 
 /* =========================================================
-   GAME URL FIXER
+   SAFE ELEMENT HELPERS
+   ========================================================= */
+
+function onClick(selector, callback) {
+    const element = document.querySelector(selector);
+
+    if (element) {
+        element.addEventListener('click', callback);
+    }
+}
+
+function onChange(selector, callback) {
+    const element = document.querySelector(selector);
+
+    if (element) {
+        element.addEventListener('change', callback);
+    }
+}
+
+function onInput(selector, callback) {
+    const element = document.querySelector(selector);
+
+    if (element) {
+        element.addEventListener('input', callback);
+    }
+}
+
+
+/* =========================================================
+   GAME URL FIX
    ========================================================= */
 
 /*
- * Makes sure game folders ALWAYS end with "/".
+ * Makes sure game directories ALWAYS end with /
  *
  * Example:
  *
@@ -28,8 +55,8 @@ window.click = 0;
  *
  * /games/2048/
  *
- * This is important for Render because some games depend
- * on the trailing slash when loading relative assets.
+ * This is important because the game files may use
+ * relative paths.
  */
 
 function fixGameUrl(url) {
@@ -41,59 +68,64 @@ function fixGameUrl(url) {
     url = String(url).trim();
 
     /*
-     * If it is a relative game URL
+     * Remove accidental whitespace/full-width spaces.
      */
-    if (
-        url.startsWith('/games/') &&
-        !url.endsWith('/') &&
-        !url.includes('.html')
-    ) {
-        url += '/';
-    }
+    url = url.replace(/\u3000/g, '');
 
     /*
-     * If it is a full URL pointing to /games/
+     * Absolute URLs
      */
-    try {
-
-        const parsed = new URL(
-            url,
-            window.location.origin
-        );
-
-        if (
-            parsed.pathname.startsWith('/games/') &&
-            !parsed.pathname.endsWith('/') &&
-            !parsed.pathname.includes('.html')
-        ) {
-            parsed.pathname += '/';
-        }
+    if (
+        url.startsWith('http://') ||
+        url.startsWith('https://')
+    ) {
 
         /*
-         * Return relative URLs as relative URLs.
-         * This keeps them on whatever domain the site
-         * is currently running on.
+         * If this is one of our /games/ URLs,
+         * make sure it ends in /
          */
-        if (url.startsWith('/')) {
-            return (
-                parsed.pathname +
-                parsed.search +
-                parsed.hash
-            );
+        try {
+
+            const parsed = new URL(url);
+
+            if (
+                parsed.pathname.startsWith('/games/') &&
+                !parsed.pathname.endsWith('/')
+            ) {
+                parsed.pathname += '/';
+            }
+
+            return parsed.toString();
+
+        } catch (error) {
+            return url;
         }
-
-        return parsed.href;
-
-    } catch (error) {
-
-        console.warn(
-            'Could not normalize game URL:',
-            url,
-            error
-        );
-
-        return url;
     }
+
+
+    /*
+     * Relative game URLs
+     */
+
+    if (url.startsWith('/games/')) {
+
+        /*
+         * Don't modify actual files such as:
+         *
+         * /games/game/index.html
+         */
+        const lastPart =
+            url.substring(url.lastIndexOf('/') + 1);
+
+        if (
+            !lastPart.includes('.') &&
+            !url.endsWith('/')
+        ) {
+            url += '/';
+        }
+    }
+
+    return url;
 }
 
 
@@ -102,7 +134,7 @@ function fixGameUrl(url) {
    ========================================================= */
 
 /*
- * Games ALWAYS open in a NEW TAB.
+ * Opens the game in a NEW TAB.
  *
  * Example:
  *
@@ -119,20 +151,17 @@ function openGameInNewTab(gameUrl) {
         return;
     }
 
-    /*
-     * IMPORTANT:
-     * Fix the URL BEFORE creating the full URL.
-     */
     gameUrl = fixGameUrl(gameUrl);
 
     let fullUrl;
 
     try {
 
-        fullUrl = new URL(
-            gameUrl,
-            window.location.origin
-        ).href;
+        fullUrl =
+            new URL(
+                gameUrl,
+                window.location.origin
+            ).href;
 
     } catch (error) {
 
@@ -145,75 +174,59 @@ function openGameInNewTab(gameUrl) {
         return;
     }
 
-    /*
-     * Make absolutely sure the final game path
-     * has a trailing slash.
-     */
-    try {
-
-        const parsed = new URL(fullUrl);
-
-        if (
-            parsed.pathname.startsWith('/games/') &&
-            !parsed.pathname.endsWith('/') &&
-            !parsed.pathname.includes('.html')
-        ) {
-            parsed.pathname += '/';
-        }
-
-        fullUrl = parsed.href;
-
-    } catch (error) {
-        console.error(error);
-    }
 
     console.log(
         'Opening game:',
         fullUrl
     );
 
-    /*
-     * ALWAYS open a new tab.
-     */
-    const newTab = window.open(
-        fullUrl,
-        '_blank'
-    );
 
     /*
-     * If the browser blocks the popup, provide
-     * a fallback.
+     * Open in a completely new tab.
+     *
+     * The current MonkeyGG2 page remains open.
      */
-    if (!newTab) {
 
-        console.warn(
-            'New tab was blocked by the browser.'
+    const newTab =
+        window.open(
+            fullUrl,
+            '_blank'
         );
 
-        return;
-    }
 
     /*
-     * Focus the new tab when possible.
+     * If popup blocking prevents the tab from opening,
+     * provide a fallback.
      */
-    try {
-        newTab.focus();
-    } catch (error) {}
+
+    if (!newTab) {
+
+        alert(
+            'Your browser blocked the new game tab. Please allow popups for this site.'
+        );
+
+    } else {
+
+        try {
+            newTab.opener = null;
+        } catch (error) {
+            // Ignore
+        }
+
+    }
 }
 
 
 /* =========================================================
-   GAME LIST CLICKING
+   GAME LIST CLICK
    ========================================================= */
 
 /*
- * Every game should look like:
+ * IMPORTANT:
  *
- * <li url="/games/2048">2048</li>
+ * Only ONE game click listener is used.
  *
- * It will automatically become:
- *
- * /games/2048/
+ * This fixes the old duplicate listener problem.
  */
 
 $(document).on(
@@ -222,18 +235,31 @@ $(document).on(
     function (event) {
 
         event.preventDefault();
+        event.stopPropagation();
+
 
         const gameUrl =
-            this.getAttribute('url');
+            fixGameUrl(
+                this.getAttribute('url')
+            );
+
 
         if (!gameUrl) {
+
             console.warn(
-                'Game has no "url" attribute:',
+                'Game does not have a url attribute:',
                 this
             );
 
             return;
         }
+
+
+        console.log(
+            'Game selected:',
+            gameUrl
+        );
+
 
         openGameInNewTab(gameUrl);
     }
@@ -241,40 +267,38 @@ $(document).on(
 
 
 /* =========================================================
-   LOGO / HOME / REFRESH
+   HOME BUTTONS
    ========================================================= */
 
-$('logo img').on(
-    'click',
+onClick(
+    'logo img',
     returnHome
 );
 
-$('#gameButton').on(
-    'click',
+onClick(
+    '#gameButton',
     returnHome
 );
 
-$('#refresh').on(
-    'click',
+onClick(
+    '#refresh',
     refreshPage
 );
 
 
 /* =========================================================
-   DIALOG
+   DIALOGS
    ========================================================= */
 
-$('dialog').on(
+$(document).on(
     'click',
-    function (e) {
+    'dialog',
+    function (event) {
 
         if (
-            e.originalEvent &&
-            e.originalEvent.target &&
-            !e.originalEvent.target.closest('div')
+            event.target === this
         ) {
-
-            e.originalEvent.target.close();
+            this.close();
         }
     }
 );
@@ -303,18 +327,23 @@ function jaro_distance(s1, s2) {
         return 0.0;
     }
 
-    const max_dist =
-        Math.floor(
-            Math.max(len1, len2) / 2
-        ) - 1;
+    const maxDist =
+        Math.max(
+            Math.floor(
+                Math.max(len1, len2) / 2
+            ) - 1,
+            0
+        );
+
 
     let match = 0;
 
-    const hash_s1 =
+    const hashS1 =
         new Array(len1).fill(0);
 
-    const hash_s2 =
+    const hashS2 =
         new Array(len2).fill(0);
+
 
     for (
         let i = 0;
@@ -325,12 +354,12 @@ function jaro_distance(s1, s2) {
         for (
             let j = Math.max(
                 0,
-                i - max_dist
+                i - maxDist
             );
 
             j < Math.min(
                 len2,
-                i + max_dist + 1
+                i + maxDist + 1
             );
 
             j++
@@ -338,11 +367,11 @@ function jaro_distance(s1, s2) {
 
             if (
                 s1[i] === s2[j] &&
-                hash_s2[j] === 0
+                hashS2[j] === 0
             ) {
 
-                hash_s1[i] = 1;
-                hash_s2[j] = 1;
+                hashS1[i] = 1;
+                hashS2[j] = 1;
 
                 match++;
 
@@ -351,12 +380,15 @@ function jaro_distance(s1, s2) {
         }
     }
 
+
     if (match === 0) {
         return 0.0;
     }
 
+
     let t = 0;
     let point = 0;
+
 
     for (
         let i = 0;
@@ -364,13 +396,14 @@ function jaro_distance(s1, s2) {
         i++
     ) {
 
-        if (hash_s1[i] === 1) {
+        if (hashS1[i] === 1) {
 
             while (
-                hash_s2[point] === 0
+                hashS2[point] === 0
             ) {
                 point++;
             }
+
 
             if (
                 s1[i] !== s2[point]
@@ -382,7 +415,9 @@ function jaro_distance(s1, s2) {
         }
     }
 
+
     t /= 2;
+
 
     return (
         match / len1 +
@@ -397,25 +432,27 @@ function jaroWinklerSimilarity(
     s2
 ) {
 
-    s1 = String(s1 || '');
-    s2 = String(s2 || '');
-
-    let jaro_dist =
+    const jaroDist =
         jaro_distance(
             s1,
             s2
         );
 
-    if (jaro_dist > 0.7) {
+
+    if (jaroDist > 0.7) {
 
         let prefix = 0;
 
+
         for (
             let i = 0;
-            i < Math.min(
-                s1.length,
-                s2.length
+
+            i <
+            Math.min(
+                String(s1).length,
+                String(s2).length
             );
+
             i++
         ) {
 
@@ -428,21 +465,24 @@ function jaroWinklerSimilarity(
             }
         }
 
+
         prefix =
             Math.min(
                 4,
                 prefix
             );
 
-        jaro_dist +=
+
+        return (
+            jaroDist +
             0.1 *
             prefix *
-            (1 - jaro_dist);
+            (1 - jaroDist)
+        ).toFixed(6);
     }
 
-    return Number(
-        jaro_dist.toFixed(6)
-    );
+
+    return jaroDist.toFixed(6);
 }
 
 
@@ -453,37 +493,43 @@ function jaroWinklerSimilarity(
 function updateList() {
 
     const searchElement =
-        $('#search');
+        document.getElementById('search');
 
     const sortElement =
-        $('#sort');
+        document.getElementById('sort');
 
     const list =
-        document.getElementById(
-            'gamesList'
-        );
+        document.getElementById('gamesList');
+
 
     if (!list) {
         return;
     }
 
+
     const filter =
-        String(
-            searchElement.val() || ''
-        ).toLowerCase().trim();
+        searchElement
+            ? searchElement.value
+                .toLowerCase()
+                .trim()
+            : '';
+
+
+    const sortType =
+        sortElement
+            ? sortElement.value
+            : '';
+
 
     const elems =
         Array.from(
             list.querySelectorAll('li')
         );
 
-    const sortType =
-        sortElement.val();
 
-
-    /* -----------------------------------------------------
-       SORT
-       ----------------------------------------------------- */
+    /*
+     * Sort alphabetically
+     */
 
     elems.sort(
         function (a, b) {
@@ -499,6 +545,7 @@ function updateList() {
                     );
             }
 
+
             if (
                 sortType ===
                 'reverse'
@@ -510,159 +557,133 @@ function updateList() {
                     );
             }
 
+
             return 0;
         }
     );
 
 
-    /* -----------------------------------------------------
-       SEARCH FILTER
-       ----------------------------------------------------- */
+    /*
+     * Filter
+     */
 
     elems.forEach(
         function (item) {
 
-            const text =
+            const name =
                 item.textContent
                     .toLowerCase();
 
-            let similarity =
-                jaroWinklerSimilarity(
-                    filter,
-                    text
-                );
 
             const aliases =
                 item.getAttribute(
                     'aliases'
                 );
 
-            if (aliases) {
 
-                aliases
-                    .split(',')
-                    .forEach(
-                        function (alias) {
+            let visible =
+                name.includes(filter);
 
-                            alias =
-                                alias
-                                    .trim()
-                                    .toLowerCase();
-
-                            if (
-                                alias.length > 0
-                            ) {
-
-                                similarity +=
-                                    jaroWinklerSimilarity(
-                                        filter,
-                                        alias
-                                    );
-                            }
-                        }
-                    );
-            }
 
             /*
-             * Empty search = show everything.
+             * Empty search = show everything
              */
+
             if (
-                filter === '' ||
-                similarity >= 0.7 ||
-                text.includes(filter)
+                filter === ''
+            ) {
+                visible = true;
+            }
+
+
+            /*
+             * Check aliases
+             */
+
+            if (
+                !visible &&
+                aliases
             ) {
 
-                item.style.display =
-                    '';
+                const aliasList =
+                    aliases
+                        .split(',');
 
-            } else {
 
-                item.style.display =
-                    'none';
+                for (
+                    const alias of aliasList
+                ) {
+
+                    const cleanAlias =
+                        alias
+                            .trim()
+                            .toLowerCase();
+
+
+                    if (
+                        cleanAlias.includes(
+                            filter
+                        )
+                    ) {
+
+                        visible = true;
+                        break;
+                    }
+
+
+                    if (
+                        filter.length > 1 &&
+                        jaroWinklerSimilarity(
+                            filter,
+                            cleanAlias
+                        ) >= 0.7
+                    ) {
+
+                        visible = true;
+                        break;
+                    }
+                }
             }
+
+
+            /*
+             * Fuzzy search
+             */
+
+            if (
+                !visible &&
+                filter.length > 1
+            ) {
+
+                const similarity =
+                    parseFloat(
+                        jaroWinklerSimilarity(
+                            filter,
+                            name
+                        )
+                    );
+
+
+                if (
+                    similarity >= 0.7
+                ) {
+
+                    visible = true;
+                }
+            }
+
+
+            item.style.display =
+                visible
+                    ? ''
+                    : 'none';
         }
     );
 
 
-    /* -----------------------------------------------------
-       SEARCH RELEVANCE SORT
-       ----------------------------------------------------- */
-
-    if (filter !== '') {
-
-        elems.sort(
-            function (a, b) {
-
-                let distanceA =
-                    jaroWinklerSimilarity(
-                        filter,
-                        a.textContent
-                            .toLowerCase()
-                    );
-
-                let distanceB =
-                    jaroWinklerSimilarity(
-                        filter,
-                        b.textContent
-                            .toLowerCase()
-                    );
-
-                const aliasesA =
-                    a.getAttribute(
-                        'aliases'
-                    );
-
-                const aliasesB =
-                    b.getAttribute(
-                        'aliases'
-                    );
-
-                if (aliasesA) {
-
-                    aliasesA
-                        .split(',')
-                        .forEach(
-                            function (alias) {
-
-                                distanceA +=
-                                    jaroWinklerSimilarity(
-                                        filter,
-                                        alias
-                                            .trim()
-                                            .toLowerCase()
-                                    );
-                            }
-                        );
-                }
-
-                if (aliasesB) {
-
-                    aliasesB
-                        .split(',')
-                        .forEach(
-                            function (alias) {
-
-                                distanceB +=
-                                    jaroWinklerSimilarity(
-                                        filter,
-                                        alias
-                                            .trim()
-                                            .toLowerCase()
-                                    );
-                            }
-                        );
-                }
-
-                return distanceB -
-                    distanceA;
-            }
-        );
-    }
-
-
-    /* -----------------------------------------------------
-       PUT ITEMS BACK INTO LIST
-       ----------------------------------------------------- */
+    /*
+     * Put sorted elements back into the list
+     */
 
     elems.forEach(
         function (item) {
@@ -671,22 +692,28 @@ function updateList() {
     );
 
 
+    /*
+     * Keep any existing game-list update
+     * function if your HTML provides it.
+     */
+
     if (
         typeof updateGameList ===
         'function'
     ) {
+
         updateGameList();
     }
 }
 
 
-$('#search').on(
-    'input',
+onInput(
+    '#search',
     updateList
 );
 
-$('#sort').on(
-    'change',
+onChange(
+    '#sort',
     updateList
 );
 
@@ -705,9 +732,11 @@ const refreshButton =
         'refresh'
     );
 
+
 if (gameButton) {
     dragElement(gameButton);
 }
+
 
 if (refreshButton) {
     dragElement(refreshButton);
@@ -759,70 +788,60 @@ const sequences = [
 
         action: snow
     }
+
 ];
 
 
-let sequenceIndexes =
-    new Array(
-        sequences.length
-    ).fill(0);
+let sequenceIndex = 0;
 
 
 document.addEventListener(
     'keydown',
     function (event) {
 
-        sequences.forEach(
-            function (
-                sequence,
-                sequenceIndex
+        let matched = false;
+
+
+        for (
+            const sequence of sequences
+        ) {
+
+            if (
+                event.code ===
+                sequence.keys[
+                    sequenceIndex
+                ]
             ) {
 
-                const index =
-                    sequenceIndexes[
-                        sequenceIndex
-                    ];
+                matched = true;
+
+                sequenceIndex++;
+
 
                 if (
-                    event.code ===
-                    sequence.keys[index]
+                    sequenceIndex ===
+                    sequence.keys.length
                 ) {
 
-                    sequenceIndexes[
-                        sequenceIndex
-                    ]++;
+                    sequence.action();
 
-                    if (
-                        sequenceIndexes[
-                            sequenceIndex
-                        ] ===
-                        sequence.keys.length
-                    ) {
-
-                        sequence.action();
-
-                        sequenceIndexes[
-                            sequenceIndex
-                        ] = 0;
-                    }
-
-                } else if (
-                    event.code ===
-                    sequence.keys[0]
-                ) {
-
-                    sequenceIndexes[
-                        sequenceIndex
-                    ] = 1;
-
-                } else {
-
-                    sequenceIndexes[
-                        sequenceIndex
-                    ] = 0;
+                    sequenceIndex = 0;
                 }
+
+            } else if (
+                event.code ===
+                sequence.keys[0]
+            ) {
+
+                matched = true;
+                sequenceIndex = 1;
             }
-        );
+        }
+
+
+        if (!matched) {
+            sequenceIndex = 0;
+        }
     }
 );
 
@@ -833,402 +852,183 @@ document.addEventListener(
 
 function snow() {
 
-    const h = Math;
-    const r = h.random;
-    const a = document;
-    const o = Date.now;
+    const canvas =
+        document.createElement(
+            'canvas'
+        );
 
-    const c =
-        a.createElement('canvas');
 
-    const H = c.style;
+    const style =
+        canvas.style;
 
-    H.position = 'fixed';
-    H.left = '0';
-    H.top = '0';
-    H.width = '100vw';
-    H.height = '100vh';
-    H.zIndex = '100000';
-    H.pointerEvents = 'none';
 
-    a.body.insertBefore(
-        c,
-        a.body.firstChild
+    style.position = 'fixed';
+    style.left = '0';
+    style.top = '0';
+    style.width = '100vw';
+    style.height = '100vh';
+    style.zIndex = '100000';
+    style.pointerEvents = 'none';
+
+
+    document.body.prepend(
+        canvas
     );
 
-    const l =
-        c.getContext('2d');
 
-    if (!l) {
+    const ctx =
+        canvas.getContext('2d');
+
+
+    if (!ctx) {
         return;
     }
 
-    const p = 300;
-    const g = 5e-4;
-    const u = 20;
 
-    let _ =
-        c.width =
-        innerWidth;
-
-    let f =
-        c.height =
-        innerHeight;
-
-    let w =
-        f + u;
-
-    let b =
-        _ + u;
-
-    const v = 15.2;
-
-    const m =
-        a.createElement('canvas');
-
-    m.width = v;
-    m.height = v;
-
-    const E =
-        m.getContext('2d');
-
-    const x =
-        E.createRadialGradient(
-            7.6,
-            7.6,
-            0,
-            7.6,
-            7.6,
-            7.6
-        );
-
-    x.addColorStop(
-        0,
-        'rgba(255,255,255,1)'
-    );
-
-    x.addColorStop(
-        1,
-        'rgba(255,255,255,0)'
-    );
-
-    E.fillStyle = x;
-
-    E.fillRect(
-        0,
-        0,
-        v,
-        v
-    );
+    const particles = 250;
 
 
-    class SnowTimer {
-
-        constructor(
-            duration,
-            autoStart = true
-        ) {
-
-            this._ts = o();
-            this._p = true;
-            this._pa = o();
-            this.d = duration;
-
-            if (autoStart) {
-                this.s();
-            }
-        }
-
-        get et() {
-
-            return this._p
-                ? this._pa - this._ts
-                : o() - this._ts;
-        }
-
-        get rt() {
-
-            return h.max(
-                0,
-                this.d - this.et
-            );
-        }
-
-        get ip() {
-            return this._p;
-        }
-
-        get ic() {
-            return this.et >= this.d;
-        }
-
-        s() {
-
-            this._ts =
-                o() - this.et;
-
-            this._p = false;
-
-            return this;
-        }
-
-        r() {
-
-            this._pa =
-                this._ts =
-                o();
-
-            return this;
-        }
-
-        p() {
-
-            this._p = true;
-            this._pa = o();
-
-            return this;
-        }
-
-        st() {
-
-            this._p = true;
-
-            return this;
-        }
-    }
+    let width =
+        canvas.width =
+        window.innerWidth;
 
 
-    class Snowflake {
-
-        D() {
-
-            const t =
-                h.atan(
-                    this.i / this.d
-                );
-
-            l.save();
-
-            l.translate(
-                this.b,
-                this.a
-            );
-
-            l.rotate(-t);
-
-            l.scale(
-                this.e,
-                this.e *
-                h.max(
-                    1,
-                    h.pow(
-                        this.j,
-                        0.7
-                    ) / 15
-                )
-            );
-
-            l.drawImage(
-                m,
-                -v / 2,
-                -v / 2
-            );
-
-            l.restore();
-        }
-    }
+    let height =
+        canvas.height =
+        window.innerHeight;
 
 
-    const C = [];
-
-    let y =
-        new SnowTimer(
-            0,
-            true
-        );
-
-    let L =
-        new SnowTimer(
-            0,
-            true
-        );
-
-
-    function resetSnow() {
-
-        for (
-            let e = 0;
-            e < p;
-            ++e
-        ) {
-
-            C[e].a =
-                r() * (f + u);
-
-            C[e].b =
-                r() * _;
-        }
-    }
-
-
-    function resizeSnow() {
-
-        c.width =
-            _ =
-            innerWidth;
-
-        c.height =
-            f =
-            innerHeight;
-
-        w = f + u;
-        b = _ + u;
-
-        resetSnow();
-    }
+    const snowflakes = [];
 
 
     for (
-        let j = 0;
-        j < p;
-        ++j
+        let i = 0;
+        i < particles;
+        i++
     ) {
 
-        const t =
-            new Snowflake();
-
-        t.a =
-            r() * (f + u);
-
-        t.b =
-            r() * _;
-
-        t.c =
-            1 *
-            (
-                3 *
-                r() +
-                0.8
-            );
-
-        t.d =
-            0.1 *
-            h.pow(
-                t.c,
-                2.5
-            ) *
-            50 *
-            (
-                2 *
-                r() +
-                1
-            );
-
-        t.d =
-            t.d < 65
-                ? 65
-                : t.d;
-
-        t.e =
-            t.c / 7.6;
-
-        t.f =
-            t.d * t.d;
-
-        t.g =
-            (
-                r() *
-                h.PI
-            ) / 1.3;
-
-        t.h =
-            15 *
-            t.c;
-
-        t.i = 0;
-        t.j = 0;
-
-        C.push(t);
+        snowflakes.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            size:
+                Math.random() * 3 + 1,
+            speed:
+                Math.random() * 2 + 1,
+            drift:
+                Math.random() * 1 - 0.5
+        });
     }
 
 
-    resetSnow();
+    function resize() {
+
+        width =
+            canvas.width =
+            window.innerWidth;
+
+        height =
+            canvas.height =
+            window.innerHeight;
+    }
 
 
     window.addEventListener(
         'resize',
-        resizeSnow,
-        false
+        resize
     );
 
 
-    function animateSnow() {
+    function animate() {
 
-        l.clearRect(
+        ctx.clearRect(
             0,
             0,
-            _,
-            f
+            width,
+            height
         );
 
-        requestAnimationFrame(
-            animateSnow
-        );
 
-        const i =
-            0.001 *
-            y.et;
+        ctx.fillStyle =
+            'white';
 
-        y.r();
-
-        const s =
-            L.et * g;
 
         for (
-            let n = 0;
-            n < C.length;
-            ++n
+            const flake of snowflakes
         ) {
 
-            const t = C[n];
+            flake.y +=
+                flake.speed;
 
-            t.i =
-                h.sin(
-                    s + t.g
-                ) *
-                t.h;
+            flake.x +=
+                flake.drift;
 
-            t.j =
-                h.sqrt(
-                    t.i *
-                    t.i +
-                    t.f
-                );
 
-            t.a +=
-                t.d * i;
+            if (
+                flake.y > height
+            ) {
 
-            t.b +=
-                t.i * i;
+                flake.y = -10;
 
-            if (t.a > w) {
-                t.a = -u;
+                flake.x =
+                    Math.random() *
+                    width;
             }
 
-            if (t.b > b) {
-                t.b = -u;
+
+            if (
+                flake.x > width
+            ) {
+                flake.x = 0;
             }
 
-            if (t.b < -u) {
-                t.b = b;
+
+            if (
+                flake.x < 0
+            ) {
+                flake.x = width;
             }
 
-            t.D();
+
+            ctx.beginPath();
+
+            ctx.arc(
+                flake.x,
+                flake.y,
+                flake.size,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fill();
         }
+
+
+        requestAnimationFrame(
+            animate
+        );
     }
 
 
-    animateSnow();
+    animate();
+
+
+    /*
+     * Automatically remove after 20 seconds.
+     */
+
+    setTimeout(
+        function () {
+
+            canvas.remove();
+
+            window.removeEventListener(
+                'resize',
+                resize
+            );
+
+        },
+        20000
+    );
 }
 
 
@@ -1242,10 +1042,12 @@ function dragElement(elmnt) {
         return;
     }
 
+
     let pos1 = 0;
     let pos2 = 0;
     let pos3 = 0;
     let pos4 = 0;
+
 
     elmnt.onmousedown =
         dragMouseDown;
@@ -1257,13 +1059,21 @@ function dragElement(elmnt) {
             e ||
             window.event;
 
+
+        /*
+         * Don't start dragging when
+         * clicking a normal button interaction.
+         */
+
         e.preventDefault();
+
 
         pos3 =
             e.clientX;
 
         pos4 =
             e.clientY;
+
 
         document.onmouseup =
             closeDragElement;
@@ -1279,15 +1089,19 @@ function dragElement(elmnt) {
             e ||
             window.event;
 
+
         e.preventDefault();
+
 
         pos1 =
             pos3 -
             e.clientX;
 
+
         pos2 =
             pos4 -
             e.clientY;
+
 
         pos3 =
             e.clientX;
@@ -1295,14 +1109,24 @@ function dragElement(elmnt) {
         pos4 =
             e.clientY;
 
-        window.click = 1;
 
         elmnt.style.top =
             (
                 elmnt.offsetTop -
                 pos2
-            ) +
-            'px';
+            ) + 'px';
+
+
+        /*
+         * Keep the original horizontal
+         * position behaviour.
+         */
+
+        elmnt.style.left =
+            (
+                elmnt.offsetLeft -
+                pos1
+            ) + 'px';
     }
 
 
@@ -1313,21 +1137,6 @@ function dragElement(elmnt) {
 
         document.onmousemove =
             null;
-
-        if (
-            window.click === 1
-        ) {
-
-            window.hold = true;
-            window.click = 0;
-
-            setTimeout(
-                function () {
-                    window.hold = false;
-                },
-                100
-            );
-        }
     }
 }
 
@@ -1338,30 +1147,49 @@ function dragElement(elmnt) {
 
 function returnHome() {
 
-    currentMenu.fadeOut(
-        300,
-        function () {
+    if (
+        currentMenu &&
+        currentMenu.length
+    ) {
 
-            $('#everything-else')
-                .fadeIn(200);
+        currentMenu.fadeOut(
+            300,
+            function () {
 
-            $('.games')
-                .hide();
+                $('#everything-else')
+                    .fadeIn(200);
 
-            $('.homepage')
-                .fadeIn(200);
-        }
-    );
+                $('.games')
+                    .hide();
+
+                $('.homepage')
+                    .fadeIn(200);
+            }
+        );
+
+    } else {
+
+        $('#everything-else')
+            .fadeIn(200);
+
+        $('.games')
+            .hide();
+
+        $('.homepage')
+            .fadeIn(200);
+    }
+
 
     currentMenu =
         $('.homepage');
+
 
     if (
         typeof preferences !==
         'undefined'
     ) {
 
-        window.inGame =
+        inGame =
             !preferences.background;
     }
 }
@@ -1378,38 +1206,40 @@ function refreshPage() {
             '#page-loader iframe'
         );
 
+
     if (!iframe) {
-        window.location.reload();
+
+        location.reload();
+
         return;
     }
 
+
     const oldUrl =
         iframe.getAttribute('src');
+
 
     if (!oldUrl) {
         return;
     }
 
-    console.log(
-        'Refreshing:',
-        oldUrl
-    );
 
     iframe.setAttribute(
         'src',
         ''
     );
 
+
     setTimeout(
         function () {
 
             iframe.setAttribute(
                 'src',
-                fixGameUrl(oldUrl)
+                oldUrl
             );
 
         },
-        10
+        100
     );
 }
 
@@ -1418,37 +1248,37 @@ function refreshPage() {
    CLOAK
    ========================================================= */
 
-/*
- * Cloak is intentionally OFF by default.
- *
- * The function is kept here so your existing settings
- * still work if you turn it on.
- */
-
 function makecloak(
-    replaceUrl =
-        preferences.cloakUrl
+    replaceUrl
 ) {
 
     if (
-        window.top.location.href ===
-        'about:blank'
+        !replaceUrl
     ) {
-        return;
+
+        replaceUrl =
+            preferences.cloakUrl;
     }
 
-    const url =
+
+    const currentUrl =
         window.location.href;
+
 
     const win =
         window.open();
 
+
     if (
         !win ||
-        win.closed
+        win.closed ||
+        typeof win.closed ===
+        'undefined'
     ) {
+
         return;
     }
+
 
     win.document.body.style.margin =
         '0';
@@ -1456,10 +1286,12 @@ function makecloak(
     win.document.body.style.height =
         '100vh';
 
+
     const iframe =
         win.document.createElement(
             'iframe'
         );
+
 
     iframe.style.border =
         'none';
@@ -1473,18 +1305,23 @@ function makecloak(
     iframe.style.margin =
         '0';
 
+
     iframe.referrerPolicy =
         'no-referrer';
+
 
     iframe.allow =
         'fullscreen';
 
+
     iframe.src =
-        url;
+        currentUrl;
+
 
     win.document.body.appendChild(
         iframe
     );
+
 
     window.location.replace(
         replaceUrl
@@ -1497,43 +1334,55 @@ function makecloak(
    ========================================================= */
 
 function mask(
+    title,
+    iconUrl
+) {
+
     title =
-        preferences.maskTitle,
+        title ||
+        preferences.maskTitle;
+
 
     iconUrl =
-        preferences.maskIconUrl
-) {
+        iconUrl ||
+        preferences.maskIconUrl;
+
 
     try {
 
-        const e =
+        const doc =
             window.top.document;
 
-        e.title =
+
+        doc.title =
             title;
 
+
         let link =
-            e.querySelector(
+            doc.querySelector(
                 "link[rel*='icon']"
             );
+
 
         if (!link) {
 
             link =
-                e.createElement(
+                doc.createElement(
                     'link'
                 );
 
-            e.head.appendChild(
+            link.rel =
+                'shortcut icon';
+
+            link.type =
+                'image/x-icon';
+
+
+            doc.head.appendChild(
                 link
             );
         }
 
-        link.type =
-            'image/x-icon';
-
-        link.rel =
-            'shortcut icon';
 
         link.href =
             iconUrl;
@@ -1557,15 +1406,17 @@ function popupsAllowed() {
     const windowName =
         'userConsole';
 
+
     const popUp =
         window.open(
-            '/popup-page.php',
+            '',
             windowName,
             'width=1000,height=700,left=24,top=24,scrollbars,resizable'
         );
 
+
     if (
-        popUp == null ||
+        !popUp ||
         typeof popUp ===
         'undefined'
     ) {
@@ -1573,7 +1424,9 @@ function popupsAllowed() {
         return false;
     }
 
+
     popUp.close();
+
 
     return true;
 }
@@ -1590,12 +1443,14 @@ function toggleMute() {
             'audio, video'
         );
 
+
     if (!mediaElements.length) {
         return;
     }
 
-    const shouldMute =
-        !Array.from(
+
+    const currentlyMuted =
+        Array.from(
             mediaElements
         ).every(
             function (media) {
@@ -1603,11 +1458,12 @@ function toggleMute() {
             }
         );
 
+
     mediaElements.forEach(
         function (media) {
 
             media.muted =
-                shouldMute;
+                !currentlyMuted;
         }
     );
 }
@@ -1621,10 +1477,12 @@ function getMainSave() {
 
     let mainSave = {};
 
+
     let localStorageSave =
         Object.entries(
             localStorage
         );
+
 
     localStorageSave =
         btoa(
@@ -1633,17 +1491,24 @@ function getMainSave() {
             )
         );
 
+
     mainSave.localStorage =
         localStorageSave;
+
 
     let cookiesSave =
         document.cookie;
 
+
     cookiesSave =
-        btoa(cookiesSave);
+        btoa(
+            cookiesSave
+        );
+
 
     mainSave.cookies =
         cookiesSave;
+
 
     mainSave =
         btoa(
@@ -1652,133 +1517,175 @@ function getMainSave() {
             )
         );
 
+
     if (
-        typeof CryptoJS ===
+        typeof CryptoJS !==
         'undefined'
     ) {
 
-        console.error(
-            'CryptoJS is required for saves.'
-        );
-
-        return mainSave;
+        mainSave =
+            CryptoJS.AES.encrypt(
+                mainSave,
+                'save'
+            ).toString();
     }
 
-    return CryptoJS.AES.encrypt(
-        mainSave,
-        'save'
-    ).toString();
+
+    return mainSave;
 }
 
+
+/* =========================================================
+   DOWNLOAD SAVE
+   ========================================================= */
 
 function downloadMainSave() {
 
     const data =
-        new Blob([
-            getMainSave()
-        ], {
-            type:
-                'application/octet-stream'
-        });
+        new Blob(
+            [
+                getMainSave()
+            ],
+            {
+                type:
+                    'application/octet-stream'
+            }
+        );
+
 
     const dataURL =
         URL.createObjectURL(
             data
         );
 
+
     const fakeElement =
         document.createElement(
             'a'
         );
 
+
     fakeElement.href =
         dataURL;
 
+
     fakeElement.download =
         'monkey.data';
+
 
     document.body.appendChild(
         fakeElement
     );
 
+
     fakeElement.click();
+
 
     fakeElement.remove();
 
-    URL.revokeObjectURL(
-        dataURL
+
+    setTimeout(
+        function () {
+
+            URL.revokeObjectURL(
+                dataURL
+            );
+
+        },
+        100
     );
 }
 
+
+/* =========================================================
+   LOAD SAVE
+   ========================================================= */
 
 function getMainSaveFromUpload(
     data
 ) {
 
-    if (
-        typeof CryptoJS ===
-        'undefined'
-    ) {
-
-        throw new Error(
-            'CryptoJS is required.'
-        );
-    }
-
-    data =
-        CryptoJS.AES.decrypt(
-            data,
-            'save'
-        ).toString(
-            CryptoJS.enc.Utf8
-        );
-
-    const mainSave =
-        JSON.parse(
-            atob(data)
-        );
-
-    const mainLocalStorageSave =
-        JSON.parse(
-            atob(
-                mainSave.localStorage
-            )
-        );
-
-    for (
-        const item of
-        mainLocalStorageSave
-    ) {
-
-        localStorage.setItem(
-            item[0],
-            item[1]
-        );
-    }
-
-    /*
-     * Cookies may be restricted by the browser,
-     * so don't let that stop the localStorage restore.
-     */
     try {
+
+        if (
+            typeof CryptoJS ===
+            'undefined'
+        ) {
+
+            throw new Error(
+                'CryptoJS is not loaded.'
+            );
+        }
+
+
+        data =
+            CryptoJS.AES.decrypt(
+                data,
+                'save'
+            ).toString(
+                CryptoJS.enc.Utf8
+            );
+
+
+        const mainSave =
+            JSON.parse(
+                atob(data)
+            );
+
+
+        const mainLocalStorageSave =
+            JSON.parse(
+                atob(
+                    mainSave.localStorage
+                )
+            );
+
+
+        for (
+            const item of
+            mainLocalStorageSave
+        ) {
+
+            localStorage.setItem(
+                item[0],
+                item[1]
+            );
+        }
+
 
         const cookiesSave =
             atob(
                 mainSave.cookies
             );
 
+
         document.cookie =
             cookiesSave;
 
+
+        return true;
+
     } catch (error) {
 
-        console.warn(
-            'Could not restore cookies:',
+        console.error(
+            'Could not load save:',
             error
         );
+
+
+        alert(
+            'That save file could not be loaded.'
+        );
+
+
+        return false;
     }
 }
 
+
+/* =========================================================
+   UPLOAD SAVE
+   ========================================================= */
 
 function uploadMainSave() {
 
@@ -1787,25 +1694,31 @@ function uploadMainSave() {
             'input'
         );
 
+
     hiddenUpload.type =
         'file';
 
+
     hiddenUpload.accept =
         '.data';
+
+
+    hiddenUpload.style.display =
+        'none';
+
 
     document.body.appendChild(
         hiddenUpload
     );
 
-    hiddenUpload.click();
-
 
     hiddenUpload.addEventListener(
         'change',
-        function (e) {
+        function (event) {
 
             const file =
-                e.target.files[0];
+                event.target.files[0];
+
 
             if (!file) {
 
@@ -1814,6 +1727,7 @@ function uploadMainSave() {
                 return;
             }
 
+
             const reader =
                 new FileReader();
 
@@ -1821,16 +1735,19 @@ function uploadMainSave() {
             reader.onload =
                 function (event) {
 
-                    try {
-
+                    const success =
                         getMainSaveFromUpload(
                             event.target.result
                         );
+
+
+                    if (success) {
 
                         const uploadResult =
                             document.querySelector(
                                 '.upload-result'
                             );
+
 
                         if (
                             uploadResult
@@ -1838,6 +1755,7 @@ function uploadMainSave() {
 
                             uploadResult.innerText =
                                 'Uploaded save!';
+
 
                             setTimeout(
                                 function () {
@@ -1849,18 +1767,8 @@ function uploadMainSave() {
                                 3000
                             );
                         }
-
-                    } catch (error) {
-
-                        console.error(
-                            'Save upload failed:',
-                            error
-                        );
-
-                        alert(
-                            'Could not load this save file.'
-                        );
                     }
+
 
                     hiddenUpload.remove();
                 };
@@ -1871,6 +1779,9 @@ function uploadMainSave() {
             );
         }
     );
+
+
+    hiddenUpload.click();
 }
 
 
@@ -1878,12 +1789,22 @@ function uploadMainSave() {
    KEY CONFIG
    ========================================================= */
 
-const keyConfig =
-    JSON.parse(
-        localStorage.getItem(
-            'keyConfig'
-        ) || '{}'
-    );
+let keyConfig = {};
+
+
+try {
+
+    keyConfig =
+        JSON.parse(
+            localStorage.getItem(
+                'keyConfig'
+            )
+        ) || {};
+
+} catch (error) {
+
+    keyConfig = {};
+}
 
 
 const keySlots =
@@ -1898,113 +1819,111 @@ const actions =
     );
 
 
-/* ---------------------------------------------------------
-   LOAD SAVED KEYS
-   --------------------------------------------------------- */
+/*
+ * Restore saved keys.
+ */
 
 for (
     const slot in keyConfig
 ) {
 
     if (
-        !Object.prototype.hasOwnProperty
-            .call(
-                keyConfig,
-                slot
-            )
+        !Object.prototype.hasOwnProperty.call(
+            keyConfig,
+            slot
+        )
     ) {
         continue;
     }
+
 
     for (
         const key in keyConfig[slot]
     ) {
 
         if (
-            !Object.prototype.hasOwnProperty
-                .call(
-                    keyConfig[slot],
-                    key
-                )
+            !Object.prototype.hasOwnProperty.call(
+                keyConfig[slot],
+                key
+            )
         ) {
             continue;
         }
 
+
         const correctKey =
             keyConfig[slot][key];
+
 
         const slotDiv =
             document.getElementById(
                 slot
             );
 
+
         if (!slotDiv) {
             continue;
         }
 
-        let displayKey =
-            key;
 
         if (
-            key.includes(
-                'keySlot'
-            )
-        ) {
-
-            displayKey =
-                key.replace(
-                    /-/g,
-                    ' '
-                );
-        }
-
-        const keyElement =
-            slotDiv.getElementsByClassName(
-                displayKey
-            )[0];
-
-        if (!keyElement) {
-            continue;
-        }
-
-        if (
-            key !==
+            key ===
             'slot-action'
         ) {
 
-            keyElement.textContent =
-                correctKey;
+            const select =
+                slotDiv.querySelector(
+                    '.slot-action'
+                );
 
-        } else {
 
-            for (
-                let i = 0;
-                i <
-                keyElement.options.length;
-                i++
-            ) {
+            if (select) {
 
-                if (
-                    keyElement
-                        .options[i]
-                        .value ===
-                    correctKey
+                for (
+                    let i = 0;
+                    i < select.options.length;
+                    i++
                 ) {
 
-                    keyElement.selectedIndex =
-                        i;
+                    if (
+                        select.options[i].value ===
+                        correctKey
+                    ) {
 
-                    break;
+                        select.selectedIndex =
+                            i;
+
+                        break;
+                    }
                 }
             }
+
+
+            continue;
+        }
+
+
+        const keyElement =
+            slotDiv.querySelector(
+                '.' +
+                CSS.escape(
+                    key
+                )
+            );
+
+
+        if (keyElement) {
+
+            keyElement.textContent =
+                correctKey;
         }
     }
 }
 
 
-/* ---------------------------------------------------------
-   SAVE ACTION SELECT
-   --------------------------------------------------------- */
+/* =========================================================
+   ACTION SELECTS
+   ========================================================= */
 
 actions.forEach(
     function (action) {
@@ -2014,24 +1933,27 @@ actions.forEach(
             function () {
 
                 const slot =
-                    action.parentNode.id;
+                    action.parentNode
+                        ? action.parentNode.id
+                        : null;
+
 
                 if (!slot) {
                     return;
                 }
 
-                if (
-                    !keyConfig[slot]
-                ) {
 
-                    keyConfig[slot] =
-                        {};
+                if (!keyConfig[slot]) {
+
+                    keyConfig[slot] = {};
                 }
+
 
                 keyConfig[slot][
                     'slot-action'
                 ] =
                     action.value;
+
 
                 localStorage.setItem(
                     'keyConfig',
@@ -2045,9 +1967,9 @@ actions.forEach(
 );
 
 
-/* ---------------------------------------------------------
-   KEY SLOTS
-   --------------------------------------------------------- */
+/* =========================================================
+   KEY BINDING
+   ========================================================= */
 
 keySlots.forEach(
     function (slot) {
@@ -2060,60 +1982,68 @@ keySlots.forEach(
                     'Press any key';
 
 
-                const keyPressHandler =
-                    function (event) {
-
-                        event.preventDefault();
-
-                        slot.textContent =
-                            event.key;
-
-                        document.removeEventListener(
-                            'keydown',
-                            keyPressHandler
-                        );
+                const originalText =
+                    slot.dataset.originalText ||
+                    '';
 
 
-                        const parSlot =
-                            slot.parentNode.id;
+                function keyPressHandler(
+                    event
+                ) {
 
-                        if (!parSlot) {
-                            return;
-                        }
-
-                        if (
-                            !keyConfig[
-                                parSlot
-                            ]
-                        ) {
-
-                            keyConfig[
-                                parSlot
-                            ] = {};
-                        }
+                    event.preventDefault();
 
 
-                        const key =
-                            slot.className
-                                .replace(
-                                    / /g,
-                                    '-'
-                                );
+                    slot.textContent =
+                        event.key;
 
 
-                        keyConfig[
-                            parSlot
-                        ][key] =
-                            event.key;
+                    document.removeEventListener(
+                        'keydown',
+                        keyPressHandler
+                    );
 
 
-                        localStorage.setItem(
-                            'keyConfig',
-                            JSON.stringify(
-                                keyConfig
-                            )
-                        );
-                    };
+                    const parent =
+                        slot.parentNode;
+
+
+                    if (!parent) {
+                        return;
+                    }
+
+
+                    const parentId =
+                        parent.id;
+
+
+                    if (!keyConfig[parentId]) {
+
+                        keyConfig[parentId] =
+                            {};
+                    }
+
+
+                    const key =
+                        slot.className
+                            .trim()
+                            .split(/\s+/)
+                            .join('-');
+
+
+                    keyConfig[parentId][
+                        key
+                    ] =
+                        event.key;
+
+
+                    localStorage.setItem(
+                        'keyConfig',
+                        JSON.stringify(
+                            keyConfig
+                        )
+                    );
+                }
 
 
                 document.addEventListener(
@@ -2138,6 +2068,7 @@ function onKeyRelease(event) {
     const key =
         event.key.toLowerCase();
 
+
     pressedKeys[key] =
         false;
 }
@@ -2145,8 +2076,34 @@ function onKeyRelease(event) {
 
 function onKeyPress(event) {
 
+    /*
+     * Don't trigger custom actions while
+     * typing into an input.
+     */
+
+    const target =
+        event.target;
+
+
+    if (
+        target &&
+        (
+            target.tagName ===
+            'INPUT' ||
+            target.tagName ===
+            'TEXTAREA' ||
+            target.tagName ===
+            'SELECT'
+        )
+    ) {
+
+        return;
+    }
+
+
     const key =
         event.key.toLowerCase();
+
 
     pressedKeys[key] =
         true;
@@ -2157,83 +2114,68 @@ function onKeyPress(event) {
     ) {
 
         if (
-            !Object.prototype.hasOwnProperty
-                .call(
-                    keyConfig,
-                    slot
-                )
+            !Object.prototype.hasOwnProperty.call(
+                keyConfig,
+                slot
+            )
         ) {
             continue;
         }
+
 
         const config =
             keyConfig[slot];
 
+
         if (
             !config ||
-            !config[
-                'keySlot-1'
-            ] ||
-            !config[
-                'keySlot-2'
-            ] ||
-            !config[
-                'slot-action'
-            ]
+            !config['keySlot-1'] ||
+            !config['keySlot-2'] ||
+            !config['slot-action']
         ) {
             continue;
         }
 
 
-        const key1Config =
-            config[
-                'keySlot-1'
-            ].toLowerCase();
+        const key1 =
+            String(
+                config['keySlot-1']
+            ).toLowerCase();
 
-        const key2Config =
-            config[
-                'keySlot-2'
-            ].toLowerCase();
 
-        const key3Config =
-            (
-                config[
-                    'keySlot-3'
-                ] || ''
+        const key2 =
+            String(
+                config['keySlot-2']
+            ).toLowerCase();
+
+
+        const key3 =
+            String(
+                config['keySlot-3'] ||
+                ''
             ).toLowerCase();
 
 
         if (
-            pressedKeys[
-                key1Config
-            ] &&
-            pressedKeys[
-                key2Config
-            ] &&
+            pressedKeys[key1] &&
+            pressedKeys[key2] &&
             (
-                key3Config
-                    ? pressedKeys[
-                        key3Config
-                    ]
+                key3
+                    ? pressedKeys[key3]
                     : true
             )
         ) {
 
             try {
 
-                /*
-                 * Existing action system.
-                 */
                 eval(
-                    config[
-                        'slot-action'
-                    ]
+                    config['slot-action']
                 );
 
             } catch (error) {
 
                 console.error(
-                    'Key action failed:',
+                    'Custom key action error:',
                     error
                 );
             }
@@ -2246,6 +2188,7 @@ document.addEventListener(
     'keydown',
     onKeyPress
 );
+
 
 document.addEventListener(
     'keyup',
@@ -2260,18 +2203,16 @@ document.addEventListener(
 /*
  * IMPORTANT:
  *
- * input[type="color"] does NOT accept:
+ * input[type=color] only accepts 6-digit colors.
+ *
+ * Therefore:
  *
  * #373737a6
  *
- * It only accepts normal 6-digit colors.
+ * cannot be placed directly into a color input.
  *
- * So the settings inputs use:
- *
- * #373737
- *
- * while the CSS variable can still be changed
- * separately if you need transparency.
+ * We use #373737 for the input and keep the
+ * transparent value for the CSS variable separately.
  */
 
 const defaultColorSettings = {
@@ -2286,7 +2227,7 @@ const defaultColorSettings = {
         '#373737',
 
     'games-color':
-        '#373737',
+        '#373737a6',
 
     'hover-color':
         '#3c3c3c',
@@ -2302,82 +2243,33 @@ const defaultColorSettings = {
 };
 
 
-const savedColorSettings =
-    JSON.parse(
-        localStorage.getItem(
-            'colorSettings'
-        ) || 'null'
-    );
+let colorSettings;
 
 
-const colorSettings = {
+try {
 
-    ...defaultColorSettings,
+    colorSettings =
+        JSON.parse(
+            localStorage.getItem(
+                'colorSettings'
+            )
+        ) ||
+        {
+            ...defaultColorSettings
+        };
 
-    ...(savedColorSettings || {})
-};
+} catch (error) {
 
-
-/* ---------------------------------------------------------
-   LOAD COLOR INPUTS
-   --------------------------------------------------------- */
-
-Object.keys(
-    colorSettings
-).forEach(
-    function (key) {
-
-        const inputElement =
-            document.getElementById(
-                key
-            );
-
-        if (!inputElement) {
-            return;
-        }
-
-        /*
-         * Color inputs require #RRGGBB.
-         */
-        if (
-            /^#[0-9A-Fa-f]{6}$/
-                .test(
-                    colorSettings[key]
-                )
-        ) {
-
-            inputElement.value =
-                colorSettings[key];
-
-        } else {
-
-            /*
-             * Strip alpha if an old saved value
-             * contained it.
-             */
-            const cleaned =
-                colorSettings[key]
-                    .substring(
-                        0,
-                        7
-                    );
-
-            if (
-                /^#[0-9A-Fa-f]{6}$/
-                    .test(cleaned)
-            ) {
-
-                inputElement.value =
-                    cleaned;
-            }
-        }
-    }
-);
+    colorSettings =
+        {
+            ...defaultColorSettings
+        };
+}
 
 
-/* ---------------------------------------------------------
-   APPLY COLORS
-   --------------------------------------------------------- */
+/*
+ * Apply CSS variables.
+ */
 
 Object.entries(
     colorSettings
@@ -2385,7 +2277,8 @@ Object.entries(
     function ([key, value]) {
 
         document.documentElement
-            .style.setProperty(
+            .style
+            .setProperty(
                 `--${key}`,
                 value
             );
@@ -2393,9 +2286,72 @@ Object.entries(
 );
 
 
-/* ---------------------------------------------------------
+/*
+ * Put colors into color inputs.
+ *
+ * Alpha colors are converted to their
+ * 6-digit equivalent for the input.
+ */
+
+Object.keys(
+    colorSettings
+).forEach(
+    function (key) {
+
+        const input =
+            document.getElementById(
+                key
+            );
+
+
+        if (!input) {
+            return;
+        }
+
+
+        let value =
+            colorSettings[key];
+
+
+        /*
+         * Convert #RRGGBBAA -> #RRGGBB
+         */
+
+        if (
+            /^#[0-9a-fA-F]{8}$/.test(
+                value
+            )
+        ) {
+
+            value =
+                value.substring(
+                    0,
+                    7
+                );
+        }
+
+
+        /*
+         * Only put valid 6-digit colors
+         * into type=color.
+         */
+
+        if (
+            /^#[0-9a-fA-F]{6}$/.test(
+                value
+            )
+        ) {
+
+            input.value =
+                value;
+        }
+    }
+);
+
+
+/* =========================================================
    SAVE COLORS
-   --------------------------------------------------------- */
+   ========================================================= */
 
 function saveColorChanges() {
 
@@ -2404,19 +2360,39 @@ function saveColorChanges() {
             'input[type="color"]'
         );
 
-    const newColorSettings =
-        {};
+
+    const newColorSettings = {
+        ...colorSettings
+    };
+
 
     inputs.forEach(
         function (input) {
 
+            if (!input.id) {
+                return;
+            }
+
+
+            /*
+             * Preserve transparency for games-color.
+             */
+
             if (
-                input.id &&
-                /^#[0-9A-Fa-f]{6}$/
-                    .test(
-                        input.value
-                    )
+                input.id ===
+                'games-color' &&
+                colorSettings[
+                    'games-color'
+                ] ===
+                '#373737a6'
             ) {
+
+                newColorSettings[
+                    input.id
+                ] =
+                    input.value + 'a6';
+
+            } else {
 
                 newColorSettings[
                     input.id
@@ -2435,13 +2411,18 @@ function saveColorChanges() {
     );
 
 
+    colorSettings =
+        newColorSettings;
+
+
     Object.entries(
         newColorSettings
     ).forEach(
         function ([key, value]) {
 
             document.documentElement
-                .style.setProperty(
+                .style
+                .setProperty(
                     `--${key}`,
                     value
                 );
@@ -2450,9 +2431,9 @@ function saveColorChanges() {
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
    RESTORE COLORS
-   --------------------------------------------------------- */
+   ========================================================= */
 
 function restoreColorChanges() {
 
@@ -2461,23 +2442,38 @@ function restoreColorChanges() {
     );
 
 
+    colorSettings =
+        {
+            ...defaultColorSettings
+        };
+
+
     Object.entries(
         defaultColorSettings
     ).forEach(
         function ([key, value]) {
 
             document.documentElement
-                .style.setProperty(
+                .style
+                .setProperty(
                     `--${key}`,
                     value
                 );
+
 
             const input =
                 document.getElementById(
                     key
                 );
 
-            if (input) {
+
+            if (
+                input &&
+                /^#[0-9a-fA-F]{6}$/.test(
+                    value
+                )
+            ) {
+
                 input.value =
                     value;
             }
@@ -2497,6 +2493,7 @@ function randomGame() {
             '#gamesList li'
         );
 
+
     if (
         !gameLinks.length
     ) {
@@ -2504,50 +2501,33 @@ function randomGame() {
     }
 
 
-    /*
-     * Only choose games that actually have
-     * a URL.
-     */
-    const validGames =
-        Array.from(
-            gameLinks
-        ).filter(
-            function (game) {
-
-                return game.getAttribute(
-                    'url'
-                );
-            }
-        );
-
-
-    if (!validGames.length) {
-        return;
-    }
-
-
     const randomIndex =
         Math.floor(
             Math.random() *
-            validGames.length
+            gameLinks.length
         );
 
 
     const randomGameLink =
-        validGames[
+        gameLinks[
             randomIndex
         ];
 
 
     const gameUrl =
-        randomGameLink.getAttribute(
-            'url'
+        fixGameUrl(
+            randomGameLink.getAttribute(
+                'url'
+            )
         );
 
 
-    openGameInNewTab(
-        gameUrl
-    );
+    if (gameUrl) {
+
+        openGameInNewTab(
+            gameUrl
+        );
+    }
 }
 
 
@@ -2581,52 +2561,62 @@ const preferencesDefaults = {
 };
 
 
-/* ---------------------------------------------------------
-   LOAD PREFERENCES
-   --------------------------------------------------------- */
-
-let storedPreferences =
-    localStorage.getItem(
-        'preferences'
-    );
+let preferences;
 
 
-if (
-    storedPreferences ===
-    null
-) {
+try {
 
-    localStorage.setItem(
-        'preferences',
-        JSON.stringify(
-            preferencesDefaults
-        )
-    );
-
-    storedPreferences =
-        JSON.stringify(
-            preferencesDefaults
+    const stored =
+        localStorage.getItem(
+            'preferences'
         );
+
+
+    if (stored) {
+
+        preferences =
+            JSON.parse(
+                stored
+            );
+
+    } else {
+
+        preferences =
+            {
+                ...preferencesDefaults
+            };
+
+        localStorage.setItem(
+            'preferences',
+            JSON.stringify(
+                preferences
+            )
+        );
+    }
+
+} catch (error) {
+
+    preferences =
+        {
+            ...preferencesDefaults
+        };
 }
 
 
 /*
- * Merge with defaults so newly-added settings
- * don't become undefined.
+ * Make sure missing preference properties
+ * get defaults.
  */
 
-const preferences = {
-
-    ...preferencesDefaults,
-
-    ...JSON.parse(
-        storedPreferences
-    )
-};
+preferences =
+    {
+        ...preferencesDefaults,
+        ...preferences
+    };
 
 
 /*
- * Save the merged preferences.
+ * Save merged preferences.
  */
 
 localStorage.setItem(
@@ -2646,27 +2636,32 @@ const cloakCheckbox =
         'cloakCheckboxInput'
     );
 
+
 const backgroundCheckbox =
     document.getElementById(
         'backgroundCheckboxInput'
     );
 
-const cloakUrl =
+
+const cloakUrlInput =
     document.getElementById(
         'cloakUrlInput'
     );
+
 
 const maskCheckbox =
     document.getElementById(
         'maskCheckboxInput'
     );
 
-const maskTitle =
+
+const maskTitleInput =
     document.getElementById(
         'maskTitleInput'
     );
 
-const maskIcon =
+
+const maskIconInput =
     document.getElementById(
         'maskIconInput'
     );
@@ -2679,9 +2674,9 @@ if (cloakCheckbox) {
 }
 
 
-if (cloakUrl) {
+if (cloakUrlInput) {
 
-    cloakUrl.value =
+    cloakUrlInput.value =
         preferences.cloakUrl;
 }
 
@@ -2693,16 +2688,16 @@ if (maskCheckbox) {
 }
 
 
-if (maskTitle) {
+if (maskTitleInput) {
 
-    maskTitle.value =
+    maskTitleInput.value =
         preferences.maskTitle;
 }
 
 
-if (maskIcon) {
+if (maskIconInput) {
 
-    maskIcon.value =
+    maskIconInput.value =
         preferences.maskIconUrl;
 }
 
@@ -2752,7 +2747,7 @@ const presets = {
             'https://mail.google.com/',
 
         title:
-            'Inbox (12) - Google Mail',
+            'Inbox - Google Mail',
 
         icon:
             'https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_512dp.png'
@@ -2779,14 +2774,18 @@ function setPreset(object) {
         return;
     }
 
+
     preferences.cloakUrl =
         object.url;
+
 
     preferences.maskTitle =
         object.title;
 
+
     preferences.maskIconUrl =
         object.icon;
+
 
     localStorage.setItem(
         'preferences',
@@ -2795,104 +2794,31 @@ function setPreset(object) {
         )
     );
 
+
     alert(
-        'Preset will take place upon next opening!'
+        'Preset saved!'
     );
 }
 
 
 function updatePreset() {
 
-    const presetElement =
+    const presetsElement =
         document.getElementById(
             'presets'
         );
 
-    if (!presetElement) {
+
+    if (!presetsElement) {
         return;
     }
 
+
     setPreset(
         presets[
-            presetElement.value
+            presetsElement.value
         ]
     );
-}
-
-
-/* =========================================================
-   CLOAK STARTUP
-   ========================================================= */
-
-/*
- * Because the default is now FALSE, this section
- * will NOT run on a fresh installation.
- */
-
-if (
-    preferences.cloak &&
-    window.location.href ===
-    window.top.location.href
-) {
-
-    if (
-        popupsAllowed()
-    ) {
-
-        makecloak();
-
-    } else {
-
-        currentMenu.fadeOut(
-            300,
-            function () {
-
-                $('.cloaklaunch')
-                    .fadeIn(200);
-            }
-        );
-
-        currentMenu =
-            $('.cloaklaunch');
-
-
-        document.addEventListener(
-            'click',
-            function (event) {
-
-                if (
-                    event.target.id ===
-                    'disableCloak'
-                ) {
-
-                    $('.cloaklaunch')
-                        .fadeOut(200);
-
-                    setTimeout(
-                        returnHome,
-                        200
-                    );
-
-                    return;
-                }
-
-
-                if (
-                    event.target.className !==
-                        'cloaklaunch' &&
-                    event.target.className !==
-                        'cloaker'
-                ) {
-                    return;
-                }
-
-
-                event.preventDefault();
-
-                makecloak();
-            }
-        );
-    }
 }
 
 
@@ -2908,6 +2834,7 @@ if (maskCheckbox) {
 
             preferences.mask =
                 maskCheckbox.checked;
+
 
             localStorage.setItem(
                 'preferences',
@@ -2929,6 +2856,7 @@ if (cloakCheckbox) {
             preferences.cloak =
                 cloakCheckbox.checked;
 
+
             localStorage.setItem(
                 'preferences',
                 JSON.stringify(
@@ -2949,6 +2877,7 @@ if (backgroundCheckbox) {
             preferences.background =
                 backgroundCheckbox.checked;
 
+
             localStorage.setItem(
                 'preferences',
                 JSON.stringify(
@@ -2956,7 +2885,8 @@ if (backgroundCheckbox) {
                 )
             );
 
-            window.inGame =
+
+            inGame =
                 !preferences.background;
         }
     );
@@ -2964,154 +2894,268 @@ if (backgroundCheckbox) {
 
 
 /* =========================================================
-   CLOAK URL
+   CLOAK URL SUBMIT
    ========================================================= */
 
-const cloakUrlSubmit =
-    document.getElementById(
-        'cloakUrlSubmit'
-    );
+onClick(
+    '#cloakUrlSubmit',
+    function () {
 
-
-if (cloakUrlSubmit) {
-
-    cloakUrlSubmit.addEventListener(
-        'click',
-        function () {
-
-            if (!cloakUrl) {
-                return;
-            }
-
-            preferences.cloakUrl =
-                cloakUrl.value;
-
-            localStorage.setItem(
-                'preferences',
-                JSON.stringify(
-                    preferences
-                )
-            );
-
-            alert(
-                'Submitted! Change will take place upon refresh'
-            );
+        if (!cloakUrlInput) {
+            return;
         }
-    );
-}
+
+
+        preferences.cloakUrl =
+            cloakUrlInput.value.trim();
+
+
+        localStorage.setItem(
+            'preferences',
+            JSON.stringify(
+                preferences
+            )
+        );
+
+
+        alert(
+            'Submitted! The change will take place the next time cloak is opened.'
+        );
+    }
+);
 
 
 /* =========================================================
-   MASK TITLE
+   MASK TITLE SUBMIT
    ========================================================= */
 
-const maskTitleSubmit =
-    document.getElementById(
-        'maskTitleSubmit'
-    );
+onClick(
+    '#maskTitleSubmit',
+    function () {
 
-
-if (maskTitleSubmit) {
-
-    maskTitleSubmit.addEventListener(
-        'click',
-        function () {
-
-            if (!maskTitle) {
-                return;
-            }
-
-            preferences.maskTitle =
-                maskTitle.value;
-
-            localStorage.setItem(
-                'preferences',
-                JSON.stringify(
-                    preferences
-                )
-            );
-
-            alert(
-                'Submitted! Change will take place upon refresh'
-            );
+        if (!maskTitleInput) {
+            return;
         }
-    );
-}
+
+
+        preferences.maskTitle =
+            maskTitleInput.value;
+
+
+        localStorage.setItem(
+            'preferences',
+            JSON.stringify(
+                preferences
+            )
+        );
+
+
+        alert(
+            'Submitted! The change will take place after refresh.'
+        );
+    }
+);
 
 
 /* =========================================================
-   MASK ICON
+   MASK ICON SUBMIT
    ========================================================= */
 
-const maskIconSubmit =
-    document.getElementById(
-        'maskIconSubmit'
-    );
+onClick(
+    '#maskIconSubmit',
+    function () {
 
-
-if (maskIconSubmit) {
-
-    maskIconSubmit.addEventListener(
-        'click',
-        function () {
-
-            if (!maskIcon) {
-                return;
-            }
-
-            preferences.maskIconUrl =
-                maskIcon.value;
-
-            localStorage.setItem(
-                'preferences',
-                JSON.stringify(
-                    preferences
-                )
-            );
-
-            alert(
-                'Submitted! Change will take place upon refresh'
-            );
+        if (!maskIconInput) {
+            return;
         }
-    );
-}
+
+
+        preferences.maskIconUrl =
+            maskIconInput.value;
+
+
+        localStorage.setItem(
+            'preferences',
+            JSON.stringify(
+                preferences
+            )
+        );
+
+
+        alert(
+            'Submitted! The change will take place after refresh.'
+        );
+    }
+);
 
 
 /* =========================================================
    DOWNLOAD / UPLOAD
    ========================================================= */
 
-const downloadButton =
-    document.getElementById(
-        'download'
-    );
+onClick(
+    '#download',
+    function () {
+
+        downloadMainSave();
+    }
+);
 
 
-if (downloadButton) {
+onClick(
+    '#upload',
+    function () {
 
-    downloadButton.addEventListener(
-        'click',
+        uploadMainSave();
+    }
+);
+
+
+/* =========================================================
+   PRESET BUTTON
+   ========================================================= */
+
+onClick(
+    '#presetSubmit',
+    updatePreset
+);
+
+
+/* =========================================================
+   RANDOM GAME BUTTON
+   ========================================================= */
+
+onClick(
+    '#randomGame',
+    randomGame
+);
+
+
+/* =========================================================
+   SEARCH / SORT INITIALIZATION
+   ========================================================= */
+
+if (
+    document.readyState ===
+    'loading'
+) {
+
+    document.addEventListener(
+        'DOMContentLoaded',
         function () {
-            downloadMainSave();
+
+            updateList();
         }
     );
+
+} else {
+
+    updateList();
 }
 
 
-const uploadButton =
-    document.getElementById(
-        'upload'
-    );
+/* =========================================================
+   CLOAK STARTUP
+   ========================================================= */
+
+/*
+ * IMPORTANT:
+ *
+ * Cloak is OFF by default.
+ *
+ * This section will ONLY run if the user
+ * explicitly enables cloak in settings.
+ */
+
+if (
+    preferences.cloak &&
+    window.location.href ===
+    window.top.location.href
+) {
+
+    if (
+        popupsAllowed()
+    ) {
+
+        makecloak();
+
+    } else {
+
+        if (
+            currentMenu &&
+            currentMenu.length
+        ) {
+
+            currentMenu.fadeOut(
+                300,
+                function () {
+
+                    $('.cloaklaunch')
+                        .fadeIn(200);
+                }
+            );
 
 
-if (uploadButton) {
-
-    uploadButton.addEventListener(
-        'click',
-        function () {
-            uploadMainSave();
+            currentMenu =
+                $('.cloaklaunch');
         }
-    );
+
+
+        document.addEventListener(
+            'click',
+            function (event) {
+
+                if (
+                    event.target &&
+                    event.target.id ===
+                    'disableCloak'
+                ) {
+
+                    $('.cloaklaunch')
+                        .fadeOut(200);
+
+
+                    setTimeout(
+                        returnHome,
+                        200
+                    );
+
+
+                    return;
+                }
+
+
+                if (
+                    !event.target
+                ) {
+                    return;
+                }
+
+
+                const className =
+                    typeof event.target.className ===
+                    'string'
+                        ? event.target.className
+                        : '';
+
+
+                if (
+                    className !==
+                        'cloaklaunch' &&
+                    className !==
+                        'cloaker'
+                ) {
+
+                    return;
+                }
+
+
+                event.preventDefault();
+
+                makecloak();
+            }
+        );
+    }
 }
 
 
@@ -3128,28 +3172,23 @@ if (
 
 
 /* =========================================================
-   INITIAL GAME LIST UPDATE
-   ========================================================= */
-
-if (
-    document.getElementById(
-        'gamesList'
-    )
-) {
-
-    updateList();
-}
-
-
-/* =========================================================
-   DONE
+   FINAL INITIALIZATION
    ========================================================= */
 
 console.log(
-    'MonkeyGG2 script loaded successfully.'
+    '%cMonkeyGG2 loaded successfully.',
+    'font-weight:bold;'
 );
 
+
 console.log(
-    'Cloak default:',
+    'Cloak:',
     preferences.cloak
+        ? 'ON'
+        : 'OFF'
+);
+
+
+console.log(
+    'Game links use trailing slashes.'
 );
