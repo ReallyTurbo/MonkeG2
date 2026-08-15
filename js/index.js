@@ -198,97 +198,79 @@
     }
 
 
-    /* =====================================================
-       OPEN GAME IN NEW TAB
-       ===================================================== */
+   /* =========================================================
+   OPEN GAME
+   ========================================================= */
 
-    function openGameInNewTab(gameUrl) {
+function openGameInNewTab(gameUrl) {
 
-        if (!gameUrl) {
-            return;
-        }
-
-
-        gameUrl =
-            fixGameUrl(gameUrl);
-
-
-        let fullUrl;
-
-
-        try {
-
-            fullUrl =
-                new URL(
-                    gameUrl,
-                    window.location.origin
-                ).href;
-
-        } catch (error) {
-
-            console.error(
-                'Invalid game URL:',
-                gameUrl,
-                error
-            );
-
-            return;
-        }
-
-
-        console.log(
-            '[MonkeyGG2] Opening game:',
-            fullUrl
-        );
-
-
-        /*
-         * Open the game in a completely new tab.
-         */
-
-        const newTab =
-            window.open(
-                fullUrl,
-                '_blank'
-            );
-
-
-        if (newTab) {
-
-            try {
-
-                newTab.opener =
-                    null;
-
-            } catch (error) {
-                // Ignore
-            }
-
-
-            /*
-             * IMPORTANT:
-             *
-             * The tab you are currently on goes
-             * to the GAMES page.
-             *
-             * It does NOT go back to homepage.
-             */
-
-            window.location.href =
-                '/games/';
-
-        } else {
-
-            /*
-             * Popup blocker fallback.
-             */
-
-            alert(
-                'Your browser blocked the new game tab. Please allow popups for this site.'
-            );
-        }
+    if (!gameUrl) {
+        return;
     }
 
+    gameUrl = fixGameUrl(gameUrl);
+
+    let fullUrl;
+
+    try {
+
+        fullUrl = new URL(
+            gameUrl,
+            window.location.origin
+        ).href;
+
+    } catch (error) {
+
+        console.error(
+            'Invalid game URL:',
+            gameUrl,
+            error
+        );
+
+        return;
+    }
+
+    console.log(
+        'Opening game:',
+        fullUrl
+    );
+
+    /*
+     * Open the game in a completely new tab.
+     */
+    const newTab = window.open(
+        fullUrl,
+        '_blank'
+    );
+
+    /*
+     * IMPORTANT:
+     *
+     * We do NOT do:
+     *
+     * window.location.href = '/games';
+     *
+     * because MonkeyGG2 is using the single-page
+     * menu system rather than a /games/ URL.
+     *
+     * The current page stays where it is.
+     */
+
+    if (newTab) {
+
+        try {
+            newTab.opener = null;
+        } catch (error) {
+            // Ignore
+        }
+
+    } else {
+
+        alert(
+            'Your browser blocked the new game tab. Please allow popups for this site.'
+        );
+    }
+}
 
     /* =====================================================
        GAME LIST CLICK
@@ -1229,58 +1211,55 @@
     }
 
 
-    /* =====================================================
-       HOME
-       ===================================================== */
+   /* =========================================================
+   HOME
+   ========================================================= */
 
-    function returnHome() {
+function returnHome() {
 
-        if (
-            currentMenu &&
-            currentMenu.length
-        ) {
+    if (
+        currentMenu &&
+        currentMenu.length
+    ) {
 
-            currentMenu.fadeOut(
-                300,
-                function () {
+        currentMenu.fadeOut(
+            200,
+            function () {
 
-                    $('#everything-else')
-                        .fadeIn(200);
+                $('#everything-else')
+                    .fadeIn(200);
 
-                    $('.games')
-                        .hide();
+                $('.games')
+                    .hide();
 
-                    $('.homepage')
-                        .fadeIn(200);
-                }
-            );
+                $('.homepage')
+                    .fadeIn(200);
+            }
+        );
 
-        } else {
+    } else {
 
-            $('#everything-else')
-                .fadeIn(200);
+        $('#everything-else')
+            .fadeIn(200);
 
-            $('.games')
-                .hide();
+        $('.games')
+            .hide();
 
-            $('.homepage')
-                .fadeIn(200);
-        }
-
-
-        currentMenu =
-            $('.homepage');
-
-
-        if (
-            typeof preferences !==
-            'undefined'
-        ) {
-
-            window.inGame =
-                !preferences.background;
-        }
+        $('.homepage')
+            .fadeIn(200);
     }
+
+    currentMenu =
+        $('.homepage');
+
+    if (
+        typeof preferences !== 'undefined'
+    ) {
+
+        inGame =
+            !preferences.background;
+    }
+}
 
 
     /* =====================================================
