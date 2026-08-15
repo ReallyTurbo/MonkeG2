@@ -199,7 +199,6 @@ function openGameInNewTab(gameUrl) {
             // Ignore
         }
     }
-}
 
 
 /* =========================================================
