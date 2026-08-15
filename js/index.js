@@ -15,22 +15,7 @@ let inGame = false;
    SAFE ELEMENT HELPERS
    ========================================================= */
 
-$(document).on('click', '#gamesList li', function (event) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
 
-    const gameUrl = fixGameUrl(
-        this.getAttribute('url')
-    );
-
-    if (!gameUrl) {
-        return;
-    }
-
-    openGameInNewTab(gameUrl);
-
-    return false;
-});
 
 
 /* =========================================================
