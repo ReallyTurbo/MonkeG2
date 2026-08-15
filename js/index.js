@@ -211,7 +211,6 @@ function openGameInNewTab(gameUrl) {
      * Change /games to whatever your actual
      * games-page URL is.
      */
-    window.location.href = '/games';
 }
 
 
