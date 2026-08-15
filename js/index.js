@@ -1,5 +1,15 @@
 let currentMenu = $('.homepage');
 
+function fixGameUrl(url) {
+    if (
+        url.startsWith('/games/') &&
+        !url.endsWith('/') &&
+        !url.includes('.html')
+    ) {
+        return url + '/';
+    }
+    return url;
+}
 $('.column button .card').on('click', function () {
     let nextMenu = this.getAttribute('data');
 
@@ -95,7 +105,7 @@ function openGameInNewTab(gameUrl) {
 $(document).on('click', '#gamesList li', function (event) {
     event.preventDefault();
 
-    const gameUrl = this.getAttribute('url');
+    const url = fixGameUrl(game.getAttribute('url'));
 
     if (gameUrl) {
         openGameInNewTab(gameUrl);
