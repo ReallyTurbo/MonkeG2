@@ -15,29 +15,22 @@ let inGame = false;
    SAFE ELEMENT HELPERS
    ========================================================= */
 
-function onClick(selector, callback) {
-    const element = document.querySelector(selector);
+$(document).on('click', '#gamesList li', function (event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
 
-    if (element) {
-        element.addEventListener('click', callback);
+    const gameUrl = fixGameUrl(
+        this.getAttribute('url')
+    );
+
+    if (!gameUrl) {
+        return;
     }
-}
 
-function onChange(selector, callback) {
-    const element = document.querySelector(selector);
+    openGameInNewTab(gameUrl);
 
-    if (element) {
-        element.addEventListener('change', callback);
-    }
-}
-
-function onInput(selector, callback) {
-    const element = document.querySelector(selector);
-
-    if (element) {
-        element.addEventListener('input', callback);
-    }
-}
+    return false;
+});
 
 
 /* =========================================================
