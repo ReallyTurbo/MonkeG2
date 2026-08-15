@@ -243,6 +243,22 @@ function openGameInNewTab(gameUrl) {
         );
 
 
+
+
+   
+
+
+
+   
+   document.addEventListener(
+    'DOMContentLoaded',
+    openGamesMenuOnStartup,
+    {
+        once: true
+    }
+);
+
+
     /*
      * If popup blocking prevents the tab from opening,
      * provide a fallback.
