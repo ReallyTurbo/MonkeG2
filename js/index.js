@@ -2,39 +2,26 @@ let currentMenu = $('.homepage');
 
 function fixGameUrl(url) {
     if (
+        url &&
         url.startsWith('/games/') &&
         !url.endsWith('/') &&
         !url.includes('.html')
     ) {
         return url + '/';
     }
+
     return url;
 }
-$('.column button .card').on('click', function () {
-    let nextMenu = this.getAttribute('data');
+$(document).on('click', '#gamesList li', function (event) {
+    event.preventDefault();
 
-    if (nextMenu === 'proxy') {
-        if (!config['proxy']) {
-            $('#disabled').showModal();
-            return;
-        }
+    const gameUrl = fixGameUrl(
+        this.getAttribute('url')
+    );
 
-        $('#everything-else').fadeOut(300, () => {
-            $('#page-loader').fadeIn(200);
-            $('#page-loader iframe').attr('src', config['proxyPath'] || '/proxy');
-            $('#page-loader iframe')[0].focus();
-        });
-
-        currentMenu = $('#page-loader');
-        inGame = !preferences.background;
-        return;
+    if (gameUrl) {
+        openGameInNewTab(gameUrl);
     }
-
-    currentMenu.fadeOut(300, () => {
-        $('.' + nextMenu).fadeIn(200);
-    });
-
-    currentMenu = $('.' + nextMenu);
 });
 
 $('logo img').on('click', returnHome);
@@ -70,22 +57,19 @@ $('dialog').on('click', function (e) {
  * https://monkegg2.onrender.com/games/ampler-launcher/mc/1.12.2
  */
 function openGameInNewTab(gameUrl) {
-    if (!gameUrl) {
-        console.error('Game URL is missing.');
-        return;
-    }
+    if (!gameUrl) return;
 
-    try {
-        const fullUrl = new URL(gameUrl, window.location.origin).href;
+    gameUrl = fixGameUrl(gameUrl);
 
-        window.open(
-            fullUrl,
-            '_blank',
-            'noopener,noreferrer'
-        );
-    } catch (error) {
-        console.error('Could not open game:', error);
-    }
+    const fullUrl = new URL(
+        gameUrl,
+        window.location.origin
+    ).href;
+
+    window.open(
+        fullUrl,
+        '_blank'
+    );
 }
 
 
@@ -1522,30 +1506,22 @@ function restoreColorChanges() {
 
 function randomGame() {
     const gameLinks =
-        document.querySelectorAll(
-            '#gamesList li'
-        );
+        document.querySelectorAll('#gamesList li');
 
-    if (!gameLinks.length) {
-        return;
-    }
+    if (!gameLinks.length) return;
 
     const randomIndex =
-        Math.floor(
-            Math.random() *
-            gameLinks.length
-        );
+        Math.floor(Math.random() * gameLinks.length);
 
     const randomGameLink =
         gameLinks[randomIndex];
 
-    const url =
-        randomGameLink.getAttribute(
-            'url'
-        );
+    const gameUrl = fixGameUrl(
+        randomGameLink.getAttribute('url')
+    );
 
-    if (url) {
-        openGameInNewTab(url);
+    if (gameUrl) {
+        openGameInNewTab(gameUrl);
     }
 }
 
