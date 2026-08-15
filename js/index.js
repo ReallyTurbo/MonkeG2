@@ -16,7 +16,22 @@ let inGame = false;
    ========================================================= */
 
 
+$(document).on('click', '#gamesList li', function (event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
 
+    const gameUrl = fixGameUrl(
+        this.getAttribute('url')
+    );
+
+    if (!gameUrl) {
+        return;
+    }
+
+    openGameInNewTab(gameUrl);
+
+    return false;
+});
 
 /* =========================================================
    GAME URL FIX
@@ -206,42 +221,6 @@ function openGameInNewTab(gameUrl) {
  *
  * This fixes the old duplicate listener problem.
  */
-
-$(document).on(
-    'click',
-    '#gamesList li',
-    function (event) {
-
-        event.preventDefault();
-        event.stopPropagation();
-
-
-        const gameUrl =
-            fixGameUrl(
-                this.getAttribute('url')
-            );
-
-
-        if (!gameUrl) {
-
-            console.warn(
-                'Game does not have a url attribute:',
-                this
-            );
-
-            return;
-        }
-
-
-        console.log(
-            'Game selected:',
-            gameUrl
-        );
-
-
-        openGameInNewTab(gameUrl);
-    }
-);
 
 
 /* =========================================================
