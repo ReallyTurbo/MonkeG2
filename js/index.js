@@ -6,130 +6,58 @@
    GLOBALS
    ========================================================= */
 
-/*
- * IMPORTANT:
- * MonkeyGG2 uses a single-page menu system.
- *
- * We do NOT navigate to /games/.
- * The Games menu is simply shown inside the current page.
- */
-let currentMenu = $('.games');
+let currentMenu = $('.homepage');
 
-/*
- * Use var instead of let so this doesn't crash if another
- * part of the existing script has already declared inGame.
- */
-var inGame = false;
+let inGame = false;
 
 
 /* =========================================================
-   SAFE EVENT HELPERS
+   SAFE ELEMENT HELPERS
    ========================================================= */
 
 function onClick(selector, callback) {
+    const element = document.querySelector(selector);
 
-    document.addEventListener(
-        'click',
-        function (event) {
-
-            const element =
-                event.target.closest(selector);
-
-            if (!element) {
-                return;
-            }
-
-            if (typeof callback === 'function') {
-
-                callback.call(
-                    element,
-                    event
-                );
-            }
-        }
-    );
+    if (element) {
+        element.addEventListener('click', callback);
+    }
 }
-
-
-function onInput(selector, callback) {
-
-    document.addEventListener(
-        'input',
-        function (event) {
-
-            if (
-                !event.target.matches(selector)
-            ) {
-                return;
-            }
-
-            if (typeof callback === 'function') {
-
-                callback.call(
-                    event.target,
-                    event
-                );
-            }
-        }
-    );
-}
-
 
 function onChange(selector, callback) {
+    const element = document.querySelector(selector);
 
-    document.addEventListener(
-        'change',
-        function (event) {
-
-            if (
-                !event.target.matches(selector)
-            ) {
-                return;
-            }
-
-            if (typeof callback === 'function') {
-
-                callback.call(
-                    event.target,
-                    event
-                );
-            }
-        }
-    );
+    if (element) {
+        element.addEventListener('change', callback);
+    }
 }
 
+function onInput(selector, callback) {
+    const element = document.querySelector(selector);
 
-/* =========================================================
-   GAME LIST CLICK
-   ========================================================= */
-
-$(document).on(
-    'click',
-    '#gamesList li',
-    function (event) {
-
-        event.preventDefault();
-        event.stopImmediatePropagation();
-
-        const gameUrl =
-            fixGameUrl(
-                this.getAttribute('url')
-            );
-
-        if (!gameUrl) {
-            return false;
-        }
-
-        openGameInNewTab(gameUrl);
-
-        return false;
+    if (element) {
+        element.addEventListener('input', callback);
     }
-);
+}
 
 
 /* =========================================================
    GAME URL FIX
    ========================================================= */
+
+/*
+ * Makes sure game directories ALWAYS end with /
+ *
+ * Example:
+ *
+ * /games/2048
+ *
+ * becomes:
+ *
+ * /games/2048/
+ *
+ * This is important because the game files may use
+ * relative paths.
+ */
 
 function fixGameUrl(url) {
 
@@ -137,95 +65,65 @@ function fixGameUrl(url) {
         return url;
     }
 
-    url =
-        String(url)
-            .trim()
-            .replace(/\u3000/g, '');
-
+    url = String(url).trim();
 
     /*
-     * Absolute URL
+     * Remove accidental whitespace/full-width spaces.
      */
+    url = url.replace(/\u3000/g, '');
 
+    /*
+     * Absolute URLs
+     */
     if (
         url.startsWith('http://') ||
         url.startsWith('https://')
     ) {
 
+        /*
+         * If this is one of our /games/ URLs,
+         * make sure it ends in /
+         */
         try {
 
-            const parsed =
-                new URL(url);
-
-
-            /*
-             * Only modify local /games/ directories.
-             */
+            const parsed = new URL(url);
 
             if (
-                parsed.pathname.startsWith(
-                    '/games/'
-                ) &&
+                parsed.pathname.startsWith('/games/') &&
                 !parsed.pathname.endsWith('/')
             ) {
-
-                const lastPart =
-                    parsed.pathname.substring(
-                        parsed.pathname.lastIndexOf('/') + 1
-                    );
-
-
-                /*
-                 * Don't modify actual files.
-                 */
-
-                if (
-                    !lastPart.includes('.')
-                ) {
-
-                    parsed.pathname += '/';
-                }
+                parsed.pathname += '/';
             }
-
 
             return parsed.toString();
 
         } catch (error) {
-
-            console.error(
-                'Could not parse game URL:',
-                url,
-                error
-            );
-
             return url;
         }
     }
 
 
     /*
-     * Relative game URL
+     * Relative game URLs
      */
 
-    if (
-        url.startsWith('/games/')
-    ) {
+    if (url.startsWith('/games/')) {
 
+        /*
+         * Don't modify actual files such as:
+         *
+         * /games/game/index.html
+         */
         const lastPart =
-            url.substring(
-                url.lastIndexOf('/') + 1
-            );
-
+            url.substring(url.lastIndexOf('/') + 1);
 
         if (
             !lastPart.includes('.') &&
             !url.endsWith('/')
         ) {
-
             url += '/';
         }
     }
-
 
     return url;
 }
@@ -235,19 +133,27 @@ function fixGameUrl(url) {
    OPEN GAME
    ========================================================= */
 
+/*
+ * Opens the game in a NEW TAB.
+ *
+ * Example:
+ *
+ * /games/2048
+ *
+ * becomes:
+ *
+ * https://monkegg2.onrender.com/games/2048/
+ */
+
 function openGameInNewTab(gameUrl) {
 
     if (!gameUrl) {
         return;
     }
 
-
-    gameUrl =
-        fixGameUrl(gameUrl);
-
+    gameUrl = fixGameUrl(gameUrl);
 
     let fullUrl;
-
 
     try {
 
@@ -276,7 +182,9 @@ function openGameInNewTab(gameUrl) {
 
 
     /*
-     * Open game in a completely separate tab.
+     * Open in a completely new tab.
+     *
+     * The current MonkeyGG2 page remains open.
      */
 
     const newTab =
@@ -287,67 +195,75 @@ function openGameInNewTab(gameUrl) {
 
 
     /*
-     * DO NOT redirect the current page.
-     *
-     * The old code used:
-     *
-     * window.location.href = '/games';
-     *
-     * That caused the Render 404.
-     *
-     * The current page simply stays on the Games menu.
+     * If popup blocking prevents the tab from opening,
+     * provide a fallback.
      */
 
-    if (newTab) {
-
-        try {
-
-            newTab.opener = null;
-
-        } catch (error) {
-
-            // Ignore
-        }
-
-    } else {
+    if (!newTab) {
 
         alert(
             'Your browser blocked the new game tab. Please allow popups for this site.'
         );
+
+    } else {
+
+        try {
+            newTab.opener = null;
+        } catch (error) {
+            // Ignore
+        }
+
     }
 }
 
 
 /* =========================================================
-   SHOW GAMES MENU
+   GAME LIST CLICK
    ========================================================= */
 
-function showGamesMenu() {
+/*
+ * IMPORTANT:
+ *
+ * Only ONE game click listener is used.
+ *
+ * This fixes the old duplicate listener problem.
+ */
 
-    $('#everything-else')
-        .show();
+$(document).on(
+    'click',
+    '#gamesList li',
+    function (event) {
 
-
-    $('.homepage')
-        .hide();
-
-
-    $('.games')
-        .show();
-
-
-    $('.cloaklaunch')
-        .hide();
-
-
-    currentMenu =
-        $('.games');
+        event.preventDefault();
+        event.stopPropagation();
 
 
-    console.log(
-        'MonkeyGG2: Games menu loaded.'
-    );
-}
+        const gameUrl =
+            fixGameUrl(
+                this.getAttribute('url')
+            );
+
+
+        if (!gameUrl) {
+
+            console.warn(
+                'Game does not have a url attribute:',
+                this
+            );
+
+            return;
+        }
+
+
+        console.log(
+            'Game selected:',
+            gameUrl
+        );
+
+
+        openGameInNewTab(gameUrl);
+    }
+);
 
 
 /* =========================================================
@@ -359,12 +275,10 @@ onClick(
     returnHome
 );
 
-
 onClick(
     '#gameButton',
     returnHome
 );
-
 
 onClick(
     '#refresh',
@@ -384,7 +298,6 @@ $(document).on(
         if (
             event.target === this
         ) {
-
             this.close();
         }
     }
@@ -395,49 +308,29 @@ $(document).on(
    JARO SIMILARITY
    ========================================================= */
 
-function jaro_distance(
-    s1,
-    s2
-) {
+function jaro_distance(s1, s2) {
 
-    s1 =
-        String(s1 || '');
+    s1 = String(s1 || '');
+    s2 = String(s2 || '');
 
-    s2 =
-        String(s2 || '');
-
-
-    if (
-        s1 === s2
-    ) {
-
+    if (s1 === s2) {
         return 1.0;
     }
 
-
-    const len1 =
-        s1.length;
-
-    const len2 =
-        s2.length;
-
+    const len1 = s1.length;
+    const len2 = s2.length;
 
     if (
         len1 === 0 ||
         len2 === 0
     ) {
-
         return 0.0;
     }
-
 
     const maxDist =
         Math.max(
             Math.floor(
-                Math.max(
-                    len1,
-                    len2
-                ) / 2
+                Math.max(len1, len2) / 2
             ) - 1,
             0
         );
@@ -445,15 +338,11 @@ function jaro_distance(
 
     let match = 0;
 
-
     const hashS1 =
-        new Array(len1)
-            .fill(0);
-
+        new Array(len1).fill(0);
 
     const hashS2 =
-        new Array(len2)
-            .fill(0);
+        new Array(len2).fill(0);
 
 
     for (
@@ -463,14 +352,12 @@ function jaro_distance(
     ) {
 
         for (
-            let j =
-                Math.max(
-                    0,
-                    i - maxDist
-                );
+            let j = Math.max(
+                0,
+                i - maxDist
+            );
 
-            j <
-            Math.min(
+            j < Math.min(
                 len2,
                 i + maxDist + 1
             );
@@ -484,7 +371,6 @@ function jaro_distance(
             ) {
 
                 hashS1[i] = 1;
-
                 hashS2[j] = 1;
 
                 match++;
@@ -495,16 +381,12 @@ function jaro_distance(
     }
 
 
-    if (
-        match === 0
-    ) {
-
+    if (match === 0) {
         return 0.0;
     }
 
 
     let t = 0;
-
     let point = 0;
 
 
@@ -514,14 +396,11 @@ function jaro_distance(
         i++
     ) {
 
-        if (
-            hashS1[i] === 1
-        ) {
+        if (hashS1[i] === 1) {
 
             while (
                 hashS2[point] === 0
             ) {
-
                 point++;
             }
 
@@ -529,10 +408,8 @@ function jaro_distance(
             if (
                 s1[i] !== s2[point]
             ) {
-
                 t++;
             }
-
 
             point++;
         }
@@ -562,9 +439,7 @@ function jaroWinklerSimilarity(
         );
 
 
-    if (
-        jaroDist > 0.7
-    ) {
+    if (jaroDist > 0.7) {
 
         let prefix = 0;
 
@@ -582,14 +457,10 @@ function jaroWinklerSimilarity(
         ) {
 
             if (
-                String(s1)[i] ===
-                String(s2)[i]
+                s1[i] === s2[i]
             ) {
-
                 prefix++;
-
             } else {
-
                 break;
             }
         }
@@ -622,21 +493,13 @@ function jaroWinklerSimilarity(
 function updateList() {
 
     const searchElement =
-        document.getElementById(
-            'search'
-        );
-
+        document.getElementById('search');
 
     const sortElement =
-        document.getElementById(
-            'sort'
-        );
-
+        document.getElementById('sort');
 
     const list =
-        document.getElementById(
-            'gamesList'
-        );
+        document.getElementById('gamesList');
 
 
     if (!list) {
@@ -660,14 +523,12 @@ function updateList() {
 
     const elems =
         Array.from(
-            list.querySelectorAll(
-                'li'
-            )
+            list.querySelectorAll('li')
         );
 
 
     /*
-     * Sort
+     * Sort alphabetically
      */
 
     elems.sort(
@@ -721,21 +582,22 @@ function updateList() {
 
 
             let visible =
-                name.includes(
-                    filter
-                );
+                name.includes(filter);
 
+
+            /*
+             * Empty search = show everything
+             */
 
             if (
                 filter === ''
             ) {
-
                 visible = true;
             }
 
 
             /*
-             * Aliases
+             * Check aliases
              */
 
             if (
@@ -744,7 +606,8 @@ function updateList() {
             ) {
 
                 const aliasList =
-                    aliases.split(',');
+                    aliases
+                        .split(',');
 
 
                 for (
@@ -764,23 +627,19 @@ function updateList() {
                     ) {
 
                         visible = true;
-
                         break;
                     }
 
 
                     if (
                         filter.length > 1 &&
-                        parseFloat(
-                            jaroWinklerSimilarity(
-                                filter,
-                                cleanAlias
-                            )
+                        jaroWinklerSimilarity(
+                            filter,
+                            cleanAlias
                         ) >= 0.7
                     ) {
 
                         visible = true;
-
                         break;
                     }
                 }
@@ -823,21 +682,19 @@ function updateList() {
 
 
     /*
-     * Reinsert sorted items.
+     * Put sorted elements back into the list
      */
 
     elems.forEach(
         function (item) {
-
-            list.appendChild(
-                item
-            );
+            list.appendChild(item);
         }
     );
 
 
     /*
-     * Existing functionality
+     * Keep any existing game-list update
+     * function if your HTML provides it.
      */
 
     if (
@@ -855,7 +712,6 @@ onInput(
     updateList
 );
 
-
 onChange(
     '#sort',
     updateList
@@ -871,30 +727,19 @@ const gameButton =
         'gameButton'
     );
 
-
 const refreshButton =
     document.getElementById(
         'refresh'
     );
 
 
-if (
-    gameButton
-) {
-
-    dragElement(
-        gameButton
-    );
+if (gameButton) {
+    dragElement(gameButton);
 }
 
 
-if (
-    refreshButton
-) {
-
-    dragElement(
-        refreshButton
-    );
+if (refreshButton) {
+    dragElement(refreshButton);
 }
 
 
@@ -920,13 +765,11 @@ const sequences = [
         ],
 
         action: function () {
-
             alert(
                 'No easter egg here'
             );
         }
     },
-
 
     {
         keys: [
@@ -991,14 +834,12 @@ document.addEventListener(
             ) {
 
                 matched = true;
-
                 sequenceIndex = 1;
             }
         }
 
 
         if (!matched) {
-
             sequenceIndex = 0;
         }
     }
@@ -1022,17 +863,11 @@ function snow() {
 
 
     style.position = 'fixed';
-
     style.left = '0';
-
     style.top = '0';
-
     style.width = '100vw';
-
     style.height = '100vh';
-
     style.zIndex = '100000';
-
     style.pointerEvents = 'none';
 
 
@@ -1042,9 +877,7 @@ function snow() {
 
 
     const ctx =
-        canvas.getContext(
-            '2d'
-        );
+        canvas.getContext('2d');
 
 
     if (!ctx) {
@@ -1075,24 +908,14 @@ function snow() {
     ) {
 
         snowflakes.push({
-
-            x:
-                Math.random() *
-                width,
-
-            y:
-                Math.random() *
-                height,
-
+            x: Math.random() * width,
+            y: Math.random() * height,
             size:
                 Math.random() * 3 + 1,
-
             speed:
                 Math.random() * 2 + 1,
-
             drift:
-                Math.random() -
-                0.5
+                Math.random() * 1 - 0.5
         });
     }
 
@@ -1102,7 +925,6 @@ function snow() {
         width =
             canvas.width =
             window.innerWidth;
-
 
         height =
             canvas.height =
@@ -1137,7 +959,6 @@ function snow() {
             flake.y +=
                 flake.speed;
 
-
             flake.x +=
                 flake.drift;
 
@@ -1157,7 +978,6 @@ function snow() {
             if (
                 flake.x > width
             ) {
-
                 flake.x = 0;
             }
 
@@ -1165,13 +985,11 @@ function snow() {
             if (
                 flake.x < 0
             ) {
-
                 flake.x = width;
             }
 
 
             ctx.beginPath();
-
 
             ctx.arc(
                 flake.x,
@@ -1180,7 +998,6 @@ function snow() {
                 0,
                 Math.PI * 2
             );
-
 
             ctx.fill();
         }
@@ -1195,11 +1012,14 @@ function snow() {
     animate();
 
 
+    /*
+     * Automatically remove after 20 seconds.
+     */
+
     setTimeout(
         function () {
 
             canvas.remove();
-
 
             window.removeEventListener(
                 'resize',
@@ -1224,11 +1044,8 @@ function dragElement(elmnt) {
 
 
     let pos1 = 0;
-
     let pos2 = 0;
-
     let pos3 = 0;
-
     let pos4 = 0;
 
 
@@ -1243,6 +1060,14 @@ function dragElement(elmnt) {
             window.event;
 
 
+        /*
+         * Don't start dragging when
+         * clicking a normal button interaction.
+         */
+
+        e.preventDefault();
+
+
         pos3 =
             e.clientX;
 
@@ -1252,7 +1077,6 @@ function dragElement(elmnt) {
 
         document.onmouseup =
             closeDragElement;
-
 
         document.onmousemove =
             elementDrag;
@@ -1293,6 +1117,11 @@ function dragElement(elmnt) {
             ) + 'px';
 
 
+        /*
+         * Keep the original horizontal
+         * position behaviour.
+         */
+
         elmnt.style.left =
             (
                 elmnt.offsetLeft -
@@ -1324,16 +1153,14 @@ function returnHome() {
     ) {
 
         currentMenu.fadeOut(
-            200,
+            300,
             function () {
 
                 $('#everything-else')
                     .fadeIn(200);
 
-
                 $('.games')
                     .hide();
-
 
                 $('.homepage')
                     .fadeIn(200);
@@ -1345,10 +1172,8 @@ function returnHome() {
         $('#everything-else')
             .fadeIn(200);
 
-
         $('.games')
             .hide();
-
 
         $('.homepage')
             .fadeIn(200);
@@ -1391,9 +1216,7 @@ function refreshPage() {
 
 
     const oldUrl =
-        iframe.getAttribute(
-            'src'
-        );
+        iframe.getAttribute('src');
 
 
     if (!oldUrl) {
@@ -1429,7 +1252,9 @@ function makecloak(
     replaceUrl
 ) {
 
-    if (!replaceUrl) {
+    if (
+        !replaceUrl
+    ) {
 
         replaceUrl =
             preferences.cloakUrl;
@@ -1458,7 +1283,6 @@ function makecloak(
     win.document.body.style.margin =
         '0';
 
-
     win.document.body.style.height =
         '100vh';
 
@@ -1472,14 +1296,11 @@ function makecloak(
     iframe.style.border =
         'none';
 
-
     iframe.style.width =
         '100%';
 
-
     iframe.style.height =
         '100%';
-
 
     iframe.style.margin =
         '0';
@@ -1550,10 +1371,8 @@ function mask(
                     'link'
                 );
 
-
             link.rel =
                 'shortcut icon';
-
 
             link.type =
                 'image/x-icon';
@@ -1625,10 +1444,7 @@ function toggleMute() {
         );
 
 
-    if (
-        !mediaElements.length
-    ) {
-
+    if (!mediaElements.length) {
         return;
     }
 
@@ -1638,7 +1454,6 @@ function toggleMute() {
             mediaElements
         ).every(
             function (media) {
-
                 return media.muted;
             }
         );
@@ -2004,9 +1819,9 @@ const actions =
     );
 
 
-/* =========================================================
-   RESTORE SAVED KEYS
-   ========================================================= */
+/*
+ * Restore saved keys.
+ */
 
 for (
     const slot in keyConfig
@@ -2018,7 +1833,6 @@ for (
             slot
         )
     ) {
-
         continue;
     }
 
@@ -2033,7 +1847,6 @@ for (
                 key
             )
         ) {
-
             continue;
         }
 
@@ -2090,28 +1903,19 @@ for (
         }
 
 
-        try {
-
-            const keyElement =
-                slotDiv.querySelector(
-                    '.' +
-                    CSS.escape(key)
-                );
-
-
-            if (keyElement) {
-
-                keyElement.textContent =
-                    correctKey;
-            }
-
-        } catch (error) {
-
-            console.warn(
-                'Could not restore key:',
-                key,
-                error
+        const keyElement =
+            slotDiv.querySelector(
+                '.' +
+                CSS.escape(
+                    key
+                )
             );
+
+
+        if (keyElement) {
+
+            keyElement.textContent =
+                correctKey;
         }
     }
 }
@@ -2167,9 +1971,6 @@ actions.forEach(
    KEY BINDING
    ========================================================= */
 
-const pressedKeys = {};
-
-
 keySlots.forEach(
     function (slot) {
 
@@ -2179,6 +1980,11 @@ keySlots.forEach(
 
                 slot.textContent =
                     'Press any key';
+
+
+                const originalText =
+                    slot.dataset.originalText ||
+                    '';
 
 
                 function keyPressHandler(
@@ -2254,6 +2060,9 @@ keySlots.forEach(
    CUSTOM KEY ACTIONS
    ========================================================= */
 
+const pressedKeys = {};
+
+
 function onKeyRelease(event) {
 
     const key =
@@ -2267,6 +2076,11 @@ function onKeyRelease(event) {
 
 function onKeyPress(event) {
 
+    /*
+     * Don't trigger custom actions while
+     * typing into an input.
+     */
+
     const target =
         event.target;
 
@@ -2274,9 +2088,12 @@ function onKeyPress(event) {
     if (
         target &&
         (
-            target.tagName === 'INPUT' ||
-            target.tagName === 'TEXTAREA' ||
-            target.tagName === 'SELECT'
+            target.tagName ===
+            'INPUT' ||
+            target.tagName ===
+            'TEXTAREA' ||
+            target.tagName ===
+            'SELECT'
         )
     ) {
 
@@ -2302,7 +2119,6 @@ function onKeyPress(event) {
                 slot
             )
         ) {
-
             continue;
         }
 
@@ -2317,7 +2133,6 @@ function onKeyPress(event) {
             !config['keySlot-2'] ||
             !config['slot-action']
         ) {
-
             continue;
         }
 
@@ -2387,10 +2202,17 @@ document.addEventListener(
 
 /*
  * IMPORTANT:
- * input[type=color] only accepts #RRGGBB.
  *
- * Therefore games-color is stored with alpha but the
- * actual color input receives only the RGB portion.
+ * input[type=color] only accepts 6-digit colors.
+ *
+ * Therefore:
+ *
+ * #373737a6
+ *
+ * cannot be placed directly into a color input.
+ *
+ * We use #373737 for the input and keep the
+ * transparent value for the CSS variable separately.
  */
 
 const defaultColorSettings = {
@@ -2446,7 +2268,7 @@ try {
 
 
 /*
- * Apply colors to CSS variables.
+ * Apply CSS variables.
  */
 
 Object.entries(
@@ -2466,6 +2288,9 @@ Object.entries(
 
 /*
  * Put colors into color inputs.
+ *
+ * Alpha colors are converted to their
+ * 6-digit equivalent for the input.
  */
 
 Object.keys(
@@ -2489,9 +2314,7 @@ Object.keys(
 
 
         /*
-         * Convert 8-digit color to 6-digit
-         * because input[type=color] doesn't
-         * support alpha.
+         * Convert #RRGGBBAA -> #RRGGBB
          */
 
         if (
@@ -2509,25 +2332,9 @@ Object.keys(
 
 
         /*
-         * Convert #RGB to #RRGGBB.
+         * Only put valid 6-digit colors
+         * into type=color.
          */
-
-        if (
-            /^#[0-9a-fA-F]{3}$/.test(
-                value
-            )
-        ) {
-
-            value =
-                '#' +
-                value[1] +
-                value[1] +
-                value[2] +
-                value[2] +
-                value[3] +
-                value[3];
-        }
-
 
         if (
             /^#[0-9a-fA-F]{6}$/.test(
@@ -2567,35 +2374,23 @@ function saveColorChanges() {
             }
 
 
+            /*
+             * Preserve transparency for games-color.
+             */
+
             if (
                 input.id ===
-                'games-color'
+                'games-color' &&
+                colorSettings[
+                    'games-color'
+                ] ===
+                '#373737a6'
             ) {
-
-                let alpha =
-                    'a6';
-
-
-                if (
-                    /^#[0-9a-fA-F]{8}$/.test(
-                        colorSettings[
-                            'games-color'
-                        ]
-                    )
-                ) {
-
-                    alpha =
-                        colorSettings[
-                            'games-color'
-                        ].substring(7);
-                }
-
 
                 newColorSettings[
                     input.id
                 ] =
-                    input.value +
-                    alpha;
+                    input.value + 'a6';
 
             } else {
 
@@ -2672,37 +2467,15 @@ function restoreColorChanges() {
                 );
 
 
-            if (!input) {
-                return;
-            }
-
-
-            let inputValue =
-                value;
-
-
             if (
-                /^#[0-9a-fA-F]{8}$/.test(
-                    inputValue
-                )
-            ) {
-
-                inputValue =
-                    inputValue.substring(
-                        0,
-                        7
-                    );
-            }
-
-
-            if (
+                input &&
                 /^#[0-9a-fA-F]{6}$/.test(
-                    inputValue
+                    value
                 )
             ) {
 
                 input.value =
-                    inputValue;
+                    value;
             }
         }
     );
@@ -2724,7 +2497,6 @@ function randomGame() {
     if (
         !gameLinks.length
     ) {
-
         return;
     }
 
@@ -2814,7 +2586,6 @@ try {
                 ...preferencesDefaults
             };
 
-
         localStorage.setItem(
             'preferences',
             JSON.stringify(
@@ -2833,7 +2604,8 @@ try {
 
 
 /*
- * Fill missing settings.
+ * Make sure missing preference properties
+ * get defaults.
  */
 
 preferences =
@@ -2842,6 +2614,10 @@ preferences =
         ...preferences
     };
 
+
+/*
+ * Save merged preferences.
+ */
 
 localStorage.setItem(
     'preferences',
@@ -3256,14 +3032,8 @@ onClick(
 
 
 /* =========================================================
-   INITIAL GAME LIST UPDATE
+   SEARCH / SORT INITIALIZATION
    ========================================================= */
-
-function initializeGameList() {
-
-    updateList();
-}
-
 
 if (
     document.readyState ===
@@ -3272,21 +3042,30 @@ if (
 
     document.addEventListener(
         'DOMContentLoaded',
-        initializeGameList,
-        {
-            once: true
+        function () {
+
+            updateList();
         }
     );
 
 } else {
 
-    initializeGameList();
+    updateList();
 }
 
 
 /* =========================================================
    CLOAK STARTUP
    ========================================================= */
+
+/*
+ * IMPORTANT:
+ *
+ * Cloak is OFF by default.
+ *
+ * This section will ONLY run if the user
+ * explicitly enables cloak in settings.
+ */
 
 if (
     preferences.cloak &&
@@ -3349,7 +3128,6 @@ if (
                 if (
                     !event.target
                 ) {
-
                     return;
                 }
 
@@ -3394,66 +3172,6 @@ if (
 
 
 /* =========================================================
-   START ON GAMES MENU
-   ========================================================= */
-
-function initializeGamesMenu() {
-
-    /*
-     * Do NOT change window.location.
-     *
-     * This is a single-page interface.
-     */
-
-    $('#everything-else')
-        .show();
-
-
-    $('.homepage')
-        .hide();
-
-
-    $('.games')
-        .show();
-
-
-    $('.cloaklaunch')
-        .hide();
-
-
-    currentMenu =
-        $('.games');
-
-
-    console.log(
-        'MonkeyGG2: Started on Games menu.'
-    );
-
-
-    updateList();
-}
-
-
-if (
-    document.readyState ===
-    'loading'
-) {
-
-    document.addEventListener(
-        'DOMContentLoaded',
-        initializeGamesMenu,
-        {
-            once: true
-        }
-    );
-
-} else {
-
-    initializeGamesMenu();
-}
-
-
-/* =========================================================
    FINAL INITIALIZATION
    ========================================================= */
 
@@ -3472,11 +3190,5 @@ console.log(
 
 
 console.log(
-    'Starting menu:',
-    '.games'
-);
-
-
-console.log(
-    'Game links open in a new tab.'
+    'Game links use trailing slashes.'
 );
