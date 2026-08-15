@@ -150,11 +150,10 @@ function openGameInNewTab(gameUrl) {
 
     try {
 
-        fullUrl =
-            new URL(
-                gameUrl,
-                window.location.origin
-            ).href;
+        fullUrl = new URL(
+            gameUrl,
+            window.location.origin
+        ).href;
 
     } catch (error) {
 
@@ -166,6 +165,52 @@ function openGameInNewTab(gameUrl) {
 
         return;
     }
+
+    console.log(
+        'Opening actual game:',
+        fullUrl
+    );
+
+
+    /*
+     * 1. Open the ACTUAL GAME in a new tab.
+     */
+    const newTab =
+        window.open(
+            fullUrl,
+            '_blank'
+        );
+
+
+    /*
+     * If popup blocking prevents the new tab,
+     * don't change the current page.
+     */
+    if (!newTab) {
+
+        alert(
+            'Your browser blocked the new game tab. Please allow popups for this site.'
+        );
+
+        return;
+    }
+
+
+    try {
+        newTab.opener = null;
+    } catch (error) {
+        // Ignore
+    }
+
+
+    /*
+     * 2. Switch THIS tab to the games page.
+     *
+     * Change /games to whatever your actual
+     * games-page URL is.
+     */
+    window.location.href = '/games';
+}
 
 
     console.log(
