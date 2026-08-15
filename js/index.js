@@ -28,6 +28,8 @@ $(document).on('click', '#gamesList li', function (event) {
         return;
     }
 
+
+   
     openGameInNewTab(gameUrl);
 
     return false;
