@@ -1349,54 +1349,7 @@ function returnHome() {
    ========================================================= */
 
 function refreshPage() {
-
-    const iframe =
-        document.querySelector(
-            '#page-loader iframe'
-        );
-
-
-    if (
-        !iframe
-    ) {
-
-        location.reload();
-
-        return;
-    }
-
-
-    const oldUrl =
-        iframe.getAttribute(
-            'src'
-        );
-
-
-    if (
-        !oldUrl
-    ) {
-
-        return;
-    }
-
-
-    iframe.setAttribute(
-        'src',
-        ''
-    );
-
-
-    setTimeout(
-        function () {
-
-            iframe.setAttribute(
-                'src',
-                oldUrl
-            );
-
-        },
-        100
-    );
+    location.reload();
 }
 
 
