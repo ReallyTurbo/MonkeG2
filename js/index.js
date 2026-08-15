@@ -3191,3 +3191,14 @@ console.log(
 console.log(
     'Game links use trailing slashes.'
 );
+
+window.addEventListener("load", function () {
+    console.log("AUTO GAME TEST");
+
+    document.querySelector(".homepage")?.style.setProperty("display", "none");
+    document.querySelector(".games")?.style.setProperty("display", "block");
+
+    console.log("Homepage:", document.querySelector(".homepage"));
+    console.log("Games:", document.querySelector(".games"));
+});
+
