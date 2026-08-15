@@ -1,16 +1,26 @@
 /* =========================================================
-   MAIN MENU
+   MONKEYGG2 - MAIN SCRIPT
+   ========================================================= */
+
+/* =========================================================
+   GLOBALS
    ========================================================= */
 
 let currentMenu = $('.homepage');
 
+window.inGame = false;
+window.hold = false;
+window.click = 0;
+
 
 /* =========================================================
-   GAME URL HANDLING
+   GAME URL FIXER
    ========================================================= */
 
 /*
- * IMPORTANT:
+ * Makes sure game folders ALWAYS end with "/".
+ *
+ * Example:
  *
  * /games/2048
  *
@@ -18,37 +28,66 @@ let currentMenu = $('.homepage');
  *
  * /games/2048/
  *
- * BEFORE the URL is opened or placed inside an iframe.
+ * This is important for Render because some games depend
+ * on the trailing slash when loading relative assets.
  */
 
 function fixGameUrl(url) {
+
     if (!url) {
         return url;
     }
 
     url = String(url).trim();
 
+    /*
+     * If it is a relative game URL
+     */
+    if (
+        url.startsWith('/games/') &&
+        !url.endsWith('/') &&
+        !url.includes('.html')
+    ) {
+        url += '/';
+    }
+
+    /*
+     * If it is a full URL pointing to /games/
+     */
     try {
+
         const parsed = new URL(
             url,
             window.location.origin
         );
 
-        /*
-         * Only add the slash to game folder URLs.
-         */
         if (
             parsed.pathname.startsWith('/games/') &&
-            !parsed.pathname.endsWith('/')
+            !parsed.pathname.endsWith('/') &&
+            !parsed.pathname.includes('.html')
         ) {
             parsed.pathname += '/';
+        }
+
+        /*
+         * Return relative URLs as relative URLs.
+         * This keeps them on whatever domain the site
+         * is currently running on.
+         */
+        if (url.startsWith('/')) {
+            return (
+                parsed.pathname +
+                parsed.search +
+                parsed.hash
+            );
         }
 
         return parsed.href;
 
     } catch (error) {
-        console.error(
-            'Could not fix game URL:',
+
+        console.warn(
+            'Could not normalize game URL:',
             url,
             error
         );
@@ -59,42 +98,122 @@ function fixGameUrl(url) {
 
 
 /* =========================================================
-   OPEN GAME IN NEW TAB
-   ========================================================= */
-
-function openGameInNewTab(gameUrl) {
-    if (!gameUrl) {
-        console.error('Game URL is missing.');
-        return;
-    }
-
-    const fixedUrl =
-        fixGameUrl(gameUrl);
-
-    console.log(
-        'Opening game:',
-        fixedUrl
-    );
-
-    window.open(
-        fixedUrl,
-        '_blank'
-    );
-}
-
-
-/* =========================================================
-   GAME LIST CLICK
+   OPEN GAME
    ========================================================= */
 
 /*
+ * Games ALWAYS open in a NEW TAB.
+ *
  * Example:
  *
- * <li url="/games/2048">2048</li>
+ * /games/2048
  *
  * becomes:
  *
  * https://monkegg2.onrender.com/games/2048/
+ */
+
+function openGameInNewTab(gameUrl) {
+
+    if (!gameUrl) {
+        return;
+    }
+
+    /*
+     * IMPORTANT:
+     * Fix the URL BEFORE creating the full URL.
+     */
+    gameUrl = fixGameUrl(gameUrl);
+
+    let fullUrl;
+
+    try {
+
+        fullUrl = new URL(
+            gameUrl,
+            window.location.origin
+        ).href;
+
+    } catch (error) {
+
+        console.error(
+            'Invalid game URL:',
+            gameUrl,
+            error
+        );
+
+        return;
+    }
+
+    /*
+     * Make absolutely sure the final game path
+     * has a trailing slash.
+     */
+    try {
+
+        const parsed = new URL(fullUrl);
+
+        if (
+            parsed.pathname.startsWith('/games/') &&
+            !parsed.pathname.endsWith('/') &&
+            !parsed.pathname.includes('.html')
+        ) {
+            parsed.pathname += '/';
+        }
+
+        fullUrl = parsed.href;
+
+    } catch (error) {
+        console.error(error);
+    }
+
+    console.log(
+        'Opening game:',
+        fullUrl
+    );
+
+    /*
+     * ALWAYS open a new tab.
+     */
+    const newTab = window.open(
+        fullUrl,
+        '_blank'
+    );
+
+    /*
+     * If the browser blocks the popup, provide
+     * a fallback.
+     */
+    if (!newTab) {
+
+        console.warn(
+            'New tab was blocked by the browser.'
+        );
+
+        return;
+    }
+
+    /*
+     * Focus the new tab when possible.
+     */
+    try {
+        newTab.focus();
+    } catch (error) {}
+}
+
+
+/* =========================================================
+   GAME LIST CLICKING
+   ========================================================= */
+
+/*
+ * Every game should look like:
+ *
+ * <li url="/games/2048">2048</li>
+ *
+ * It will automatically become:
+ *
+ * /games/2048/
  */
 
 $(document).on(
@@ -108,118 +227,21 @@ $(document).on(
             this.getAttribute('url');
 
         if (!gameUrl) {
-            console.error(
-                'Game is missing its url attribute:',
+            console.warn(
+                'Game has no "url" attribute:',
                 this
             );
 
             return;
         }
 
-        openGameInNewTab(
-            gameUrl
-        );
+        openGameInNewTab(gameUrl);
     }
 );
 
 
 /* =========================================================
-   GAME CARD / MENU BUTTONS
-   ========================================================= */
-
-$(document).on(
-    'click',
-    '.column button .card',
-    function () {
-
-        const nextMenu =
-            this.getAttribute('data');
-
-        if (!nextMenu) {
-            return;
-        }
-
-        if (nextMenu === 'proxy') {
-
-            if (
-                typeof config !== 'undefined' &&
-                !config['proxy']
-            ) {
-
-                const disabled =
-                    $('#disabled')[0];
-
-                if (
-                    disabled &&
-                    typeof disabled.showModal === 'function'
-                ) {
-                    disabled.showModal();
-                }
-
-                return;
-            }
-
-            $('#everything-else').fadeOut(
-                300,
-                function () {
-
-                    $('#page-loader').fadeIn(
-                        200
-                    );
-
-                    let proxyPath =
-                        '/proxy';
-
-                    if (
-                        typeof config !== 'undefined' &&
-                        config['proxyPath']
-                    ) {
-                        proxyPath =
-                            config['proxyPath'];
-                    }
-
-                    const iframe =
-                        $('#page-loader iframe')[0];
-
-                    if (iframe) {
-                        iframe.src =
-                            proxyPath;
-
-                        iframe.focus();
-                    }
-                }
-            );
-
-            currentMenu =
-                $('#page-loader');
-
-            if (
-                typeof preferences !== 'undefined'
-            ) {
-                inGame =
-                    !preferences.background;
-            }
-
-            return;
-        }
-
-        currentMenu.fadeOut(
-            300,
-            function () {
-
-                $('.' + nextMenu)
-                    .fadeIn(200);
-            }
-        );
-
-        currentMenu =
-            $('.' + nextMenu);
-    }
-);
-
-
-/* =========================================================
-   GENERAL BUTTONS
+   LOGO / HOME / REFRESH
    ========================================================= */
 
 $('logo img').on(
@@ -239,26 +261,20 @@ $('#refresh').on(
 
 
 /* =========================================================
-   DIALOGS
+   DIALOG
    ========================================================= */
 
 $('dialog').on(
     'click',
-    function (event) {
-
-        const target =
-            event.target;
+    function (e) {
 
         if (
-            target &&
-            !target.closest('div')
+            e.originalEvent &&
+            e.originalEvent.target &&
+            !e.originalEvent.target.closest('div')
         ) {
 
-            if (
-                typeof target.close === 'function'
-            ) {
-                target.close();
-            }
+            e.originalEvent.target.close();
         }
     }
 );
@@ -268,20 +284,17 @@ $('dialog').on(
    JARO SIMILARITY
    ========================================================= */
 
-function jaro_distance(
-    s1,
-    s2
-) {
+function jaro_distance(s1, s2) {
+
+    s1 = String(s1 || '');
+    s2 = String(s2 || '');
 
     if (s1 === s2) {
         return 1.0;
     }
 
-    const len1 =
-        s1.length;
-
-    const len2 =
-        s2.length;
+    const len1 = s1.length;
+    const len2 = s2.length;
 
     if (
         len1 === 0 ||
@@ -292,10 +305,7 @@ function jaro_distance(
 
     const max_dist =
         Math.floor(
-            Math.max(
-                len1,
-                len2
-            ) / 2
+            Math.max(len1, len2) / 2
         ) - 1;
 
     let match = 0;
@@ -313,17 +323,15 @@ function jaro_distance(
     ) {
 
         for (
-            let j =
-                Math.max(
-                    0,
-                    i - max_dist
-                );
+            let j = Math.max(
+                0,
+                i - max_dist
+            );
 
-            j <
-                Math.min(
-                    len2,
-                    i + max_dist + 1
-                );
+            j < Math.min(
+                len2,
+                i + max_dist + 1
+            );
 
             j++
         ) {
@@ -356,9 +364,7 @@ function jaro_distance(
         i++
     ) {
 
-        if (
-            hash_s1[i] === 1
-        ) {
+        if (hash_s1[i] === 1) {
 
             while (
                 hash_s2[point] === 0
@@ -391,25 +397,22 @@ function jaroWinklerSimilarity(
     s2
 ) {
 
-    const jaro_dist =
+    s1 = String(s1 || '');
+    s2 = String(s2 || '');
+
+    let jaro_dist =
         jaro_distance(
             s1,
             s2
         );
 
-    let result =
-        jaro_dist;
-
-    if (
-        jaro_dist > 0.7
-    ) {
+    if (jaro_dist > 0.7) {
 
         let prefix = 0;
 
         for (
             let i = 0;
-            i <
-            Math.min(
+            i < Math.min(
                 s1.length,
                 s2.length
             );
@@ -431,14 +434,14 @@ function jaroWinklerSimilarity(
                 prefix
             );
 
-        result +=
+        jaro_dist +=
             0.1 *
             prefix *
-            (1 - result);
+            (1 - jaro_dist);
     }
 
     return Number(
-        result.toFixed(6)
+        jaro_dist.toFixed(6)
     );
 }
 
@@ -452,36 +455,30 @@ function updateList() {
     const searchElement =
         $('#search');
 
-    const filter =
-        searchElement.length
-            ? String(
-                searchElement.val() || ''
-              ).toLowerCase()
-            : '';
+    const sortElement =
+        $('#sort');
 
-    const gamesList =
+    const list =
         document.getElementById(
             'gamesList'
         );
 
-    if (!gamesList) {
+    if (!list) {
         return;
     }
 
+    const filter =
+        String(
+            searchElement.val() || ''
+        ).toLowerCase().trim();
+
     const elems =
         Array.from(
-            gamesList.querySelectorAll(
-                'li'
-            )
+            list.querySelectorAll('li')
         );
 
-    const sortElement =
-        $('#sort');
-
     const sortType =
-        sortElement.length
-            ? sortElement.val()
-            : 'default';
+        sortElement.val();
 
 
     /* -----------------------------------------------------
@@ -519,7 +516,7 @@ function updateList() {
 
 
     /* -----------------------------------------------------
-       FILTER
+       SEARCH FILTER
        ----------------------------------------------------- */
 
     elems.forEach(
@@ -529,70 +526,69 @@ function updateList() {
                 item.textContent
                     .toLowerCase();
 
-            let similarity = 0;
+            let similarity =
+                jaroWinklerSimilarity(
+                    filter,
+                    text
+                );
 
-            if (filter.length > 0) {
+            const aliases =
+                item.getAttribute(
+                    'aliases'
+                );
 
-                similarity =
-                    jaroWinklerSimilarity(
-                        filter,
-                        text
-                    );
+            if (aliases) {
 
-                const aliases =
-                    item.getAttribute(
-                        'aliases'
-                    );
+                aliases
+                    .split(',')
+                    .forEach(
+                        function (alias) {
 
-                if (aliases) {
+                            alias =
+                                alias
+                                    .trim()
+                                    .toLowerCase();
 
-                    aliases
-                        .split(',')
-                        .forEach(
-                            function (alias) {
+                            if (
+                                alias.length > 0
+                            ) {
 
-                                alias =
-                                    alias
-                                        .trim()
-                                        .toLowerCase();
-
-                                if (
-                                    alias.length > 0
-                                ) {
-
-                                    similarity +=
-                                        jaroWinklerSimilarity(
-                                            filter,
-                                            alias
-                                        );
-                                }
+                                similarity +=
+                                    jaroWinklerSimilarity(
+                                        filter,
+                                        alias
+                                    );
                             }
-                        );
-                }
+                        }
+                    );
             }
 
+            /*
+             * Empty search = show everything.
+             */
+            if (
+                filter === '' ||
+                similarity >= 0.7 ||
+                text.includes(filter)
+            ) {
 
-            const matches =
-                filter.length === 0 ||
-                text.includes(filter) ||
-                similarity >= 0.7;
+                item.style.display =
+                    '';
 
+            } else {
 
-            item.style.display =
-                matches
-                    ? ''
-                    : 'none';
+                item.style.display =
+                    'none';
+            }
         }
     );
 
 
     /* -----------------------------------------------------
-       SEARCH RELEVANCE
+       SEARCH RELEVANCE SORT
        ----------------------------------------------------- */
 
-    if (
-        filter.length > 0
-    ) {
+    if (filter !== '') {
 
         elems.sort(
             function (a, b) {
@@ -611,9 +607,13 @@ function updateList() {
                             .toLowerCase()
                     );
 
-
                 const aliasesA =
                     a.getAttribute(
+                        'aliases'
+                    );
+
+                const aliasesB =
+                    b.getAttribute(
                         'aliases'
                     );
 
@@ -635,12 +635,6 @@ function updateList() {
                         );
                 }
 
-
-                const aliasesB =
-                    b.getAttribute(
-                        'aliases'
-                    );
-
                 if (aliasesB) {
 
                     aliasesB
@@ -659,19 +653,20 @@ function updateList() {
                         );
                 }
 
-                return distanceB - distanceA;
+                return distanceB -
+                    distanceA;
             }
         );
     }
 
 
     /* -----------------------------------------------------
-       PUT ITEMS BACK
+       PUT ITEMS BACK INTO LIST
        ----------------------------------------------------- */
 
     elems.forEach(
         function (item) {
-            gamesList.appendChild(item);
+            list.appendChild(item);
         }
     );
 
@@ -700,17 +695,23 @@ $('#sort').on(
    DRAG BUTTONS
    ========================================================= */
 
-dragElement(
+const gameButton =
     document.getElementById(
         'gameButton'
-    )
-);
+    );
 
-dragElement(
+const refreshButton =
     document.getElementById(
         'refresh'
-    )
-);
+    );
+
+if (gameButton) {
+    dragElement(gameButton);
+}
+
+if (refreshButton) {
+    dragElement(refreshButton);
+}
 
 
 /* =========================================================
@@ -761,61 +762,67 @@ const sequences = [
 ];
 
 
-let sequenceIndex = 0;
+let sequenceIndexes =
+    new Array(
+        sequences.length
+    ).fill(0);
 
 
 document.addEventListener(
     'keydown',
     function (event) {
 
-        let matched = false;
-
-        for (
-            const sequence of sequences
-        ) {
-
-            if (
-                event.code ===
-                sequence.keys[
-                    sequenceIndex
-                ]
+        sequences.forEach(
+            function (
+                sequence,
+                sequenceIndex
             ) {
 
-                matched = true;
-
-                sequenceIndex++;
+                const index =
+                    sequenceIndexes[
+                        sequenceIndex
+                    ];
 
                 if (
-                    sequenceIndex ===
-                    sequence.keys.length
+                    event.code ===
+                    sequence.keys[index]
                 ) {
 
-                    sequence.action();
+                    sequenceIndexes[
+                        sequenceIndex
+                    ]++;
 
-                    sequenceIndex = 0;
+                    if (
+                        sequenceIndexes[
+                            sequenceIndex
+                        ] ===
+                        sequence.keys.length
+                    ) {
+
+                        sequence.action();
+
+                        sequenceIndexes[
+                            sequenceIndex
+                        ] = 0;
+                    }
+
+                } else if (
+                    event.code ===
+                    sequence.keys[0]
+                ) {
+
+                    sequenceIndexes[
+                        sequenceIndex
+                    ] = 1;
+
+                } else {
+
+                    sequenceIndexes[
+                        sequenceIndex
+                    ] = 0;
                 }
-
-                break;
             }
-
-
-            if (
-                event.code ===
-                sequence.keys[0]
-            ) {
-
-                matched = true;
-
-                sequenceIndex = 1;
-
-                break;
-            }
-        }
-
-
-        if (!matched) {
-            sequenceIndex = 0;
-        }
+        );
     }
 );
 
@@ -826,106 +833,67 @@ document.addEventListener(
 
 function snow() {
 
-    const h =
-        Math;
+    const h = Math;
+    const r = h.random;
+    const a = document;
+    const o = Date.now;
 
-    const r =
-        h.random;
+    const c =
+        a.createElement('canvas');
 
-    const a =
-        document;
+    const H = c.style;
 
-    const o =
-        Date.now;
-
-
-    const canvas =
-        a.createElement(
-            'canvas'
-        );
-
-    const style =
-        canvas.style;
-
-    style.position =
-        'fixed';
-
-    style.left =
-        '0';
-
-    style.top =
-        '0';
-
-    style.width =
-        '100vw';
-
-    style.height =
-        '100vh';
-
-    style.zIndex =
-        '100000';
-
-    style.pointerEvents =
-        'none';
-
+    H.position = 'fixed';
+    H.left = '0';
+    H.top = '0';
+    H.width = '100vw';
+    H.height = '100vh';
+    H.zIndex = '100000';
+    H.pointerEvents = 'none';
 
     a.body.insertBefore(
-        canvas,
+        c,
         a.body.firstChild
     );
 
+    const l =
+        c.getContext('2d');
 
-    const context =
-        canvas.getContext('2d');
+    if (!l) {
+        return;
+    }
 
+    const p = 300;
+    const g = 5e-4;
+    const u = 20;
 
-    const particleCount =
-        300;
+    let _ =
+        c.width =
+        innerWidth;
 
-    const gravity =
-        5e-4;
+    let f =
+        c.height =
+        innerHeight;
 
-    const padding =
-        20;
+    let w =
+        f + u;
 
-    let width =
-        canvas.width =
-        window.innerWidth;
+    let b =
+        _ + u;
 
-    let height =
-        canvas.height =
-        window.innerHeight;
+    const v = 15.2;
 
-    let bottom =
-        height + padding;
+    const m =
+        a.createElement('canvas');
 
-    let right =
-        width + padding;
+    m.width = v;
+    m.height = v;
 
-    const size =
-        15.2;
+    const E =
+        m.getContext('2d');
 
-
-    const snowCanvas =
-        a.createElement(
-            'canvas'
-        );
-
-    snowCanvas.width =
-        size;
-
-    snowCanvas.height =
-        size;
-
-
-    const snowContext =
-        snowCanvas.getContext(
-            '2d'
-        );
-
-
-    const gradient =
-        snowContext.createRadialGradient(
+    const x =
+        E.createRadialGradient(
             7.6,
             7.6,
             0,
@@ -934,397 +902,333 @@ function snow() {
             7.6
         );
 
-
-    gradient.addColorStop(
+    x.addColorStop(
         0,
         'rgba(255,255,255,1)'
     );
 
-    gradient.addColorStop(
+    x.addColorStop(
         1,
         'rgba(255,255,255,0)'
     );
 
+    E.fillStyle = x;
 
-    snowContext.fillStyle =
-        gradient;
-
-    snowContext.fillRect(
+    E.fillRect(
         0,
         0,
-        size,
-        size
+        v,
+        v
     );
 
 
-    class Timer {
+    class SnowTimer {
 
         constructor(
             duration,
-            running = true
+            autoStart = true
         ) {
 
-            this._start =
-                o();
+            this._ts = o();
+            this._p = true;
+            this._pa = o();
+            this.d = duration;
 
-            this._paused =
-                !running;
-
-            this._pauseTime =
-                o();
-
-            this.duration =
-                duration;
-
-            if (running) {
-                this.start();
+            if (autoStart) {
+                this.s();
             }
         }
 
+        get et() {
 
-        get elapsed() {
-
-            return this._paused
-                ? this._pauseTime -
-                    this._start
-                : o() -
-                    this._start;
+            return this._p
+                ? this._pa - this._ts
+                : o() - this._ts;
         }
 
-
-        get remaining() {
+        get rt() {
 
             return h.max(
                 0,
-                this.duration -
-                this.elapsed
+                this.d - this.et
             );
         }
 
-
-        get paused() {
-            return this._paused;
+        get ip() {
+            return this._p;
         }
 
+        get ic() {
+            return this.et >= this.d;
+        }
 
-        start() {
+        s() {
 
-            this._start =
-                o() -
-                this.elapsed;
+            this._ts =
+                o() - this.et;
 
-            this._paused =
-                false;
+            this._p = false;
 
             return this;
         }
 
+        r() {
 
-        reset() {
-
-            this._pauseTime =
-                this._start =
+            this._pa =
+                this._ts =
                 o();
 
             return this;
         }
 
+        p() {
 
-        pause() {
+            this._p = true;
+            this._pa = o();
 
-            this._paused =
-                true;
+            return this;
+        }
 
-            this._pauseTime =
-                o();
+        st() {
+
+            this._p = true;
 
             return this;
         }
     }
 
 
-    class SnowParticle {
+    class Snowflake {
 
-        draw() {
+        D() {
 
-            const angle =
+            const t =
                 h.atan(
-                    this.xVelocity /
-                    this.speed
+                    this.i / this.d
                 );
 
-            context.save();
+            l.save();
 
-            context.translate(
-                this.x,
-                this.y
+            l.translate(
+                this.b,
+                this.a
             );
 
-            context.rotate(
-                -angle
-            );
+            l.rotate(-t);
 
-            context.scale(
-                this.scale,
-                this.scale *
+            l.scale(
+                this.e,
+                this.e *
                 h.max(
                     1,
                     h.pow(
-                        this.velocity,
+                        this.j,
                         0.7
                     ) / 15
                 )
             );
 
-            context.drawImage(
-                snowCanvas,
-                -size / 2,
-                -size / 2
+            l.drawImage(
+                m,
+                -v / 2,
+                -v / 2
             );
 
-            context.restore();
+            l.restore();
         }
     }
 
 
-    const particles = [];
+    const C = [];
+
+    let y =
+        new SnowTimer(
+            0,
+            true
+        );
+
+    let L =
+        new SnowTimer(
+            0,
+            true
+        );
 
 
-    function resetParticles() {
+    function resetSnow() {
 
         for (
-            let i = 0;
-            i < particles.length;
-            i++
+            let e = 0;
+            e < p;
+            ++e
         ) {
 
-            particles[i].x =
-                r() *
-                (height + padding);
+            C[e].a =
+                r() * (f + u);
 
-            particles[i].y =
-                r() *
-                width;
+            C[e].b =
+                r() * _;
         }
     }
 
 
-    function resize() {
+    function resizeSnow() {
 
-        canvas.width =
-            width =
-            window.innerWidth;
+        c.width =
+            _ =
+            innerWidth;
 
-        canvas.height =
-            height =
-            window.innerHeight;
+        c.height =
+            f =
+            innerHeight;
 
-        bottom =
-            height +
-            padding;
+        w = f + u;
+        b = _ + u;
 
-        right =
-            width +
-            padding;
-
-        resetParticles();
+        resetSnow();
     }
-
-
-    const timer =
-        new Timer(
-            0,
-            true
-        );
-
-    const movementTimer =
-        new Timer(
-            0,
-            true
-        );
 
 
     for (
         let j = 0;
-        j < particleCount;
-        j++
+        j < p;
+        ++j
     ) {
 
-        const particle =
-            new SnowParticle();
+        const t =
+            new Snowflake();
 
+        t.a =
+            r() * (f + u);
 
-        particle.x =
-            r() *
-            (height + padding);
+        t.b =
+            r() * _;
 
-        particle.y =
-            r() *
-            width;
+        t.c =
+            1 *
+            (
+                3 *
+                r() +
+                0.8
+            );
 
-        particle.scale =
-            3 *
-            r() +
-            0.8;
-
-        particle.speed =
+        t.d =
             0.1 *
             h.pow(
-                particle.scale,
+                t.c,
                 2.5
             ) *
             50 *
-            (2 * r() + 1);
+            (
+                2 *
+                r() +
+                1
+            );
 
-        if (
-            particle.speed < 65
-        ) {
-            particle.speed = 65;
-        }
+        t.d =
+            t.d < 65
+                ? 65
+                : t.d;
 
-        particle.scale =
-            particle.scale /
-            7.6;
+        t.e =
+            t.c / 7.6;
 
-        particle.velocity =
-            particle.speed *
-            particle.speed;
+        t.f =
+            t.d * t.d;
 
-        particle.phase =
+        t.g =
             (
                 r() *
                 h.PI
             ) / 1.3;
 
-        particle.wind =
+        t.h =
             15 *
-            particle.scale;
+            t.c;
 
-        particle.xVelocity = 0;
-        particle.rotation = 0;
+        t.i = 0;
+        t.j = 0;
 
-        particles.push(
-            particle
-        );
+        C.push(t);
     }
 
 
-    resetParticles();
-
-
-    function animate() {
-
-        context.clearRect(
-            0,
-            0,
-            width,
-            height
-        );
-
-        const delta =
-            0.001 *
-            timer.elapsed;
-
-        timer.reset();
-
-        const movement =
-            movementTimer.elapsed *
-            gravity;
-
-
-        for (
-            let n = 0;
-            n < particles.length;
-            n++
-        ) {
-
-            const particle =
-                particles[n];
-
-
-            particle.xVelocity =
-                h.sin(
-                    movement +
-                    particle.phase
-                ) *
-                particle.wind;
-
-
-            particle.velocity =
-                h.sqrt(
-                    particle.xVelocity *
-                    particle.xVelocity +
-                    particle.speed *
-                    particle.speed
-                );
-
-
-            particle.x +=
-                particle.speed *
-                delta;
-
-            particle.y +=
-                particle.xVelocity *
-                delta;
-
-
-            if (
-                particle.x >
-                bottom
-            ) {
-                particle.x =
-                    -padding;
-            }
-
-
-            if (
-                particle.y >
-                right
-            ) {
-                particle.y =
-                    -padding;
-            }
-
-
-            if (
-                particle.y <
-                -padding
-            ) {
-                particle.y =
-                    right;
-            }
-
-
-            particle.draw();
-        }
-
-
-        requestAnimationFrame(
-            animate
-        );
-    }
-
-
-    document.addEventListener(
-        'visibilitychange',
-        function () {
-            setTimeout(
-                resize,
-                100
-            );
-        },
-        false
-    );
+    resetSnow();
 
 
     window.addEventListener(
         'resize',
-        resize,
+        resizeSnow,
         false
     );
 
 
-    animate();
+    function animateSnow() {
+
+        l.clearRect(
+            0,
+            0,
+            _,
+            f
+        );
+
+        requestAnimationFrame(
+            animateSnow
+        );
+
+        const i =
+            0.001 *
+            y.et;
+
+        y.r();
+
+        const s =
+            L.et * g;
+
+        for (
+            let n = 0;
+            n < C.length;
+            ++n
+        ) {
+
+            const t = C[n];
+
+            t.i =
+                h.sin(
+                    s + t.g
+                ) *
+                t.h;
+
+            t.j =
+                h.sqrt(
+                    t.i *
+                    t.i +
+                    t.f
+                );
+
+            t.a +=
+                t.d * i;
+
+            t.b +=
+                t.i * i;
+
+            if (t.a > w) {
+                t.a = -u;
+            }
+
+            if (t.b > b) {
+                t.b = -u;
+            }
+
+            if (t.b < -u) {
+                t.b = b;
+            }
+
+            t.D();
+        }
+    }
+
+
+    animateSnow();
 }
 
 
@@ -1332,41 +1236,34 @@ function snow() {
    DRAG ELEMENT
    ========================================================= */
 
-function dragElement(
-    element
-) {
+function dragElement(elmnt) {
 
-    if (!element) {
+    if (!elmnt) {
         return;
     }
-
 
     let pos1 = 0;
     let pos2 = 0;
     let pos3 = 0;
     let pos4 = 0;
 
-
-    element.onmousedown =
+    elmnt.onmousedown =
         dragMouseDown;
 
 
-    function dragMouseDown(
-        event
-    ) {
+    function dragMouseDown(e) {
 
-        event =
-            event ||
+        e =
+            e ||
             window.event;
 
-        event.preventDefault();
+        e.preventDefault();
 
         pos3 =
-            event.clientX;
+            e.clientX;
 
         pos4 =
-            event.clientY;
-
+            e.clientY;
 
         document.onmouseup =
             closeDragElement;
@@ -1376,38 +1273,36 @@ function dragElement(
     }
 
 
-    function elementDrag(
-        event
-    ) {
+    function elementDrag(e) {
 
-        event =
-            event ||
+        e =
+            e ||
             window.event;
 
-        event.preventDefault();
-
+        e.preventDefault();
 
         pos1 =
             pos3 -
-            event.clientX;
+            e.clientX;
 
         pos2 =
             pos4 -
-            event.clientY;
-
+            e.clientY;
 
         pos3 =
-            event.clientX;
+            e.clientX;
 
         pos4 =
-            event.clientY;
+            e.clientY;
 
+        window.click = 1;
 
-        element.style.top =
+        elmnt.style.top =
             (
-                element.offsetTop -
+                elmnt.offsetTop -
                 pos2
-            ) + 'px';
+            ) +
+            'px';
     }
 
 
@@ -1418,6 +1313,21 @@ function dragElement(
 
         document.onmousemove =
             null;
+
+        if (
+            window.click === 1
+        ) {
+
+            window.hold = true;
+            window.click = 0;
+
+            setTimeout(
+                function () {
+                    window.hold = false;
+                },
+                100
+            );
+        }
     }
 }
 
@@ -1443,17 +1353,15 @@ function returnHome() {
         }
     );
 
-
     currentMenu =
         $('.homepage');
-
 
     if (
         typeof preferences !==
         'undefined'
     ) {
 
-        inGame =
+        window.inGame =
             !preferences.background;
     }
 }
@@ -1466,31 +1374,39 @@ function returnHome() {
 function refreshPage() {
 
     const iframe =
-        $('#page-loader iframe')[0];
+        document.querySelector(
+            '#page-loader iframe'
+        );
 
     if (!iframe) {
+        window.location.reload();
         return;
     }
 
-
     const oldUrl =
-        iframe.src;
-
+        iframe.getAttribute('src');
 
     if (!oldUrl) {
         return;
     }
 
+    console.log(
+        'Refreshing:',
+        oldUrl
+    );
 
-    iframe.src =
-        'about:blank';
-
+    iframe.setAttribute(
+        'src',
+        ''
+    );
 
     setTimeout(
         function () {
 
-            iframe.src =
-                fixGameUrl(oldUrl);
+            iframe.setAttribute(
+                'src',
+                fixGameUrl(oldUrl)
+            );
 
         },
         10
@@ -1502,20 +1418,17 @@ function refreshPage() {
    CLOAK
    ========================================================= */
 
+/*
+ * Cloak is intentionally OFF by default.
+ *
+ * The function is kept here so your existing settings
+ * still work if you turn it on.
+ */
+
 function makecloak(
-    replaceUrl
+    replaceUrl =
+        preferences.cloakUrl
 ) {
-
-    if (
-        !replaceUrl &&
-        typeof preferences !==
-        'undefined'
-    ) {
-
-        replaceUrl =
-            preferences.cloakUrl;
-    }
-
 
     if (
         window.top.location.href ===
@@ -1524,25 +1437,18 @@ function makecloak(
         return;
     }
 
-
     const url =
         window.location.href;
-
 
     const win =
         window.open();
 
-
     if (
         !win ||
-        win.closed ||
-        typeof win.closed ===
-        'undefined'
+        win.closed
     ) {
-
         return;
     }
-
 
     win.document.body.style.margin =
         '0';
@@ -1550,12 +1456,10 @@ function makecloak(
     win.document.body.style.height =
         '100vh';
 
-
     const iframe =
         win.document.createElement(
             'iframe'
         );
-
 
     iframe.style.border =
         'none';
@@ -1578,18 +1482,13 @@ function makecloak(
     iframe.src =
         url;
 
-
     win.document.body.appendChild(
         iframe
     );
 
-
-    if (replaceUrl) {
-
-        window.location.replace(
-            replaceUrl
-        );
-    }
+    window.location.replace(
+        replaceUrl
+    );
 }
 
 
@@ -1598,69 +1497,51 @@ function makecloak(
    ========================================================= */
 
 function mask(
-    title,
-    iconUrl
+    title =
+        preferences.maskTitle,
+
+    iconUrl =
+        preferences.maskIconUrl
 ) {
-
-    if (
-        typeof preferences !==
-        'undefined'
-    ) {
-
-        title =
-            title ||
-            preferences.maskTitle;
-
-        iconUrl =
-            iconUrl ||
-            preferences.maskIconUrl;
-    }
-
 
     try {
 
-        const doc =
+        const e =
             window.top.document;
 
-
-        doc.title =
+        e.title =
             title;
 
-
         let link =
-            doc.querySelector(
+            e.querySelector(
                 "link[rel*='icon']"
             );
-
 
         if (!link) {
 
             link =
-                doc.createElement(
+                e.createElement(
                     'link'
                 );
 
-            link.rel =
-                'shortcut icon';
-
-            doc
-                .getElementsByTagName(
-                    'head'
-                )[0]
-                .appendChild(link);
+            e.head.appendChild(
+                link
+            );
         }
-
 
         link.type =
             'image/x-icon';
+
+        link.rel =
+            'shortcut icon';
 
         link.href =
             iconUrl;
 
     } catch (error) {
 
-        console.error(
-            'Could not mask page:',
+        console.warn(
+            'Could not apply mask:',
             error
         );
     }
@@ -1676,26 +1557,23 @@ function popupsAllowed() {
     const windowName =
         'userConsole';
 
-
-    const popup =
+    const popUp =
         window.open(
             '/popup-page.php',
             windowName,
             'width=1000,height=700,left=24,top=24,scrollbars,resizable'
         );
 
-
     if (
-        popup == null ||
-        typeof popup ===
+        popUp == null ||
+        typeof popUp ===
         'undefined'
     ) {
 
         return false;
     }
 
-
-    popup.close();
+    popUp.close();
 
     return true;
 }
@@ -1707,17 +1585,29 @@ function popupsAllowed() {
 
 function toggleMute() {
 
-    const media =
+    const mediaElements =
         document.querySelectorAll(
             'audio, video'
         );
 
+    if (!mediaElements.length) {
+        return;
+    }
 
-    media.forEach(
-        function (element) {
+    const shouldMute =
+        !Array.from(
+            mediaElements
+        ).every(
+            function (media) {
+                return media.muted;
+            }
+        );
 
-            element.muted =
-                !element.muted;
+    mediaElements.forEach(
+        function (media) {
+
+            media.muted =
+                shouldMute;
         }
     );
 }
@@ -1731,12 +1621,10 @@ function getMainSave() {
 
     let mainSave = {};
 
-
     let localStorageSave =
         Object.entries(
             localStorage
         );
-
 
     localStorageSave =
         btoa(
@@ -1745,22 +1633,17 @@ function getMainSave() {
             )
         );
 
-
     mainSave.localStorage =
         localStorageSave;
-
 
     let cookiesSave =
         document.cookie;
 
-
     cookiesSave =
         btoa(cookiesSave);
 
-
     mainSave.cookies =
         cookiesSave;
-
 
     mainSave =
         btoa(
@@ -1769,21 +1652,22 @@ function getMainSave() {
             )
         );
 
-
     if (
-        typeof CryptoJS !==
+        typeof CryptoJS ===
         'undefined'
     ) {
 
-        mainSave =
-            CryptoJS.AES.encrypt(
-                mainSave,
-                'save'
-            ).toString();
+        console.error(
+            'CryptoJS is required for saves.'
+        );
+
+        return mainSave;
     }
 
-
-    return mainSave;
+    return CryptoJS.AES.encrypt(
+        mainSave,
+        'save'
+    ).toString();
 }
 
 
@@ -1792,44 +1676,37 @@ function downloadMainSave() {
     const data =
         new Blob([
             getMainSave()
-        ]);
-
+        ], {
+            type:
+                'application/octet-stream'
+        });
 
     const dataURL =
         URL.createObjectURL(
             data
         );
 
-
-    const link =
+    const fakeElement =
         document.createElement(
             'a'
         );
 
-
-    link.href =
+    fakeElement.href =
         dataURL;
 
-    link.download =
+    fakeElement.download =
         'monkey.data';
 
-
     document.body.appendChild(
-        link
+        fakeElement
     );
 
-    link.click();
+    fakeElement.click();
 
-    link.remove();
+    fakeElement.remove();
 
-
-    setTimeout(
-        function () {
-            URL.revokeObjectURL(
-                dataURL
-            );
-        },
-        100
+    URL.revokeObjectURL(
+        dataURL
     );
 }
 
@@ -1838,99 +1715,104 @@ function getMainSaveFromUpload(
     data
 ) {
 
+    if (
+        typeof CryptoJS ===
+        'undefined'
+    ) {
+
+        throw new Error(
+            'CryptoJS is required.'
+        );
+    }
+
+    data =
+        CryptoJS.AES.decrypt(
+            data,
+            'save'
+        ).toString(
+            CryptoJS.enc.Utf8
+        );
+
+    const mainSave =
+        JSON.parse(
+            atob(data)
+        );
+
+    const mainLocalStorageSave =
+        JSON.parse(
+            atob(
+                mainSave.localStorage
+            )
+        );
+
+    for (
+        const item of
+        mainLocalStorageSave
+    ) {
+
+        localStorage.setItem(
+            item[0],
+            item[1]
+        );
+    }
+
+    /*
+     * Cookies may be restricted by the browser,
+     * so don't let that stop the localStorage restore.
+     */
     try {
-
-        if (
-            typeof CryptoJS !==
-            'undefined'
-        ) {
-
-            data =
-                CryptoJS.AES.decrypt(
-                    data,
-                    'save'
-                ).toString(
-                    CryptoJS.enc.Utf8
-                );
-        }
-
-
-        const mainSave =
-            JSON.parse(
-                atob(data)
-            );
-
-
-        const localStorageSave =
-            JSON.parse(
-                atob(
-                    mainSave.localStorage
-                )
-            );
-
 
         const cookiesSave =
             atob(
                 mainSave.cookies
             );
 
-
-        localStorageSave.forEach(
-            function (item) {
-
-                localStorage.setItem(
-                    item[0],
-                    item[1]
-                );
-            }
-        );
-
-
         document.cookie =
             cookiesSave;
 
-
-        return true;
-
     } catch (error) {
 
-        console.error(
-            'Could not restore save:',
+        console.warn(
+            'Could not restore cookies:',
             error
         );
-
-        return false;
     }
 }
 
 
 function uploadMainSave() {
 
-    const input =
+    const hiddenUpload =
         document.createElement(
             'input'
         );
 
-
-    input.type =
+    hiddenUpload.type =
         'file';
 
-    input.accept =
+    hiddenUpload.accept =
         '.data';
 
+    document.body.appendChild(
+        hiddenUpload
+    );
 
-    input.addEventListener(
+    hiddenUpload.click();
+
+
+    hiddenUpload.addEventListener(
         'change',
-        function (event) {
+        function (e) {
 
             const file =
-                event.target.files[0];
-
+                e.target.files[0];
 
             if (!file) {
+
+                hiddenUpload.remove();
+
                 return;
             }
-
 
             const reader =
                 new FileReader();
@@ -1939,33 +1821,48 @@ function uploadMainSave() {
             reader.onload =
                 function (event) {
 
-                    const success =
+                    try {
+
                         getMainSaveFromUpload(
                             event.target.result
                         );
 
+                        const uploadResult =
+                            document.querySelector(
+                                '.upload-result'
+                            );
 
-                    const result =
-                        document.querySelector(
-                            '.upload-result'
+                        if (
+                            uploadResult
+                        ) {
+
+                            uploadResult.innerText =
+                                'Uploaded save!';
+
+                            setTimeout(
+                                function () {
+
+                                    uploadResult.innerText =
+                                        '';
+
+                                },
+                                3000
+                            );
+                        }
+
+                    } catch (error) {
+
+                        console.error(
+                            'Save upload failed:',
+                            error
                         );
 
-
-                    if (result) {
-
-                        result.innerText =
-                            success
-                                ? 'Uploaded save!'
-                                : 'Could not upload save.';
-
-                        setTimeout(
-                            function () {
-                                result.innerText =
-                                    '';
-                            },
-                            3000
+                        alert(
+                            'Could not load this save file.'
                         );
                     }
+
+                    hiddenUpload.remove();
                 };
 
 
@@ -1974,26 +1871,6 @@ function uploadMainSave() {
             );
         }
     );
-
-
-    document.body.appendChild(
-        input
-    );
-
-
-    input.click();
-
-
-    setTimeout(
-        function () {
-
-            if (input.parentNode) {
-                input.remove();
-            }
-
-        },
-        1000
-    );
 }
 
 
@@ -2001,22 +1878,12 @@ function uploadMainSave() {
    KEY CONFIG
    ========================================================= */
 
-let keyConfig = {};
-
-
-try {
-
-    keyConfig =
-        JSON.parse(
-            localStorage.getItem(
-                'keyConfig'
-            )
-        ) || {};
-
-} catch (error) {
-
-    keyConfig = {};
-}
+const keyConfig =
+    JSON.parse(
+        localStorage.getItem(
+            'keyConfig'
+        ) || '{}'
+    );
 
 
 const keySlots =
@@ -2031,117 +1898,113 @@ const actions =
     );
 
 
-Object.keys(
-    keyConfig
-).forEach(
-    function (slot) {
+/* ---------------------------------------------------------
+   LOAD SAVED KEYS
+   --------------------------------------------------------- */
 
-        const slotData =
-            keyConfig[slot];
+for (
+    const slot in keyConfig
+) {
 
+    if (
+        !Object.prototype.hasOwnProperty
+            .call(
+                keyConfig,
+                slot
+            )
+    ) {
+        continue;
+    }
 
-        if (!slotData) {
-            return;
+    for (
+        const key in keyConfig[slot]
+    ) {
+
+        if (
+            !Object.prototype.hasOwnProperty
+                .call(
+                    keyConfig[slot],
+                    key
+                )
+        ) {
+            continue;
         }
 
+        const correctKey =
+            keyConfig[slot][key];
 
         const slotDiv =
             document.getElementById(
                 slot
             );
 
-
         if (!slotDiv) {
-            return;
+            continue;
         }
 
+        let displayKey =
+            key;
 
-        Object.keys(
-            slotData
-        ).forEach(
-            function (key) {
+        if (
+            key.includes(
+                'keySlot'
+            )
+        ) {
 
-                const correctKey =
-                    slotData[key];
+            displayKey =
+                key.replace(
+                    /-/g,
+                    ' '
+                );
+        }
 
+        const keyElement =
+            slotDiv.getElementsByClassName(
+                displayKey
+            )[0];
 
-                if (
-                    key ===
-                    'slot-action'
-                ) {
+        if (!keyElement) {
+            continue;
+        }
 
-                    const select =
-                        slotDiv.querySelector(
-                            '.slot-action'
-                        );
+        if (
+            key !==
+            'slot-action'
+        ) {
 
+            keyElement.textContent =
+                correctKey;
 
-                    if (select) {
+        } else {
 
-                        for (
-                            let i = 0;
-                            i <
-                            select.options.length;
-                            i++
-                        ) {
-
-                            if (
-                                select
-                                    .options[i]
-                                    .value ===
-                                correctKey
-                            ) {
-
-                                select.selectedIndex =
-                                    i;
-
-                                break;
-                            }
-                        }
-                    }
-
-                    return;
-                }
-
-
-                let displayKey =
-                    key;
-
+            for (
+                let i = 0;
+                i <
+                keyElement.options.length;
+                i++
+            ) {
 
                 if (
-                    key.includes(
-                        'keySlot'
-                    )
+                    keyElement
+                        .options[i]
+                        .value ===
+                    correctKey
                 ) {
 
-                    displayKey =
-                        key.replace(
-                            /-/g,
-                            ' '
-                        );
-                }
+                    keyElement.selectedIndex =
+                        i;
 
-
-                const keyElement =
-                    slotDiv.getElementsByClassName(
-                        displayKey
-                    )[0];
-
-
-                if (keyElement) {
-
-                    keyElement.textContent =
-                        correctKey;
+                    break;
                 }
             }
-        );
+        }
     }
-);
+}
 
 
-/* =========================================================
-   KEY ACTION SELECTS
-   ========================================================= */
+/* ---------------------------------------------------------
+   SAVE ACTION SELECT
+   --------------------------------------------------------- */
 
 actions.forEach(
     function (action) {
@@ -2150,33 +2013,25 @@ actions.forEach(
             'change',
             function () {
 
-                const parent =
-                    action.closest(
-                        '[id]'
-                    );
+                const slot =
+                    action.parentNode.id;
 
-
-                if (!parent) {
+                if (!slot) {
                     return;
                 }
 
-
-                const slot =
-                    parent.id;
-
-
-                if (!keyConfig[slot]) {
+                if (
+                    !keyConfig[slot]
+                ) {
 
                     keyConfig[slot] =
                         {};
                 }
 
-
                 keyConfig[slot][
                     'slot-action'
                 ] =
                     action.value;
-
 
                 localStorage.setItem(
                     'keyConfig',
@@ -2190,9 +2045,9 @@ actions.forEach(
 );
 
 
-/* =========================================================
+/* ---------------------------------------------------------
    KEY SLOTS
-   ========================================================= */
+   --------------------------------------------------------- */
 
 keySlots.forEach(
     function (slot) {
@@ -2210,10 +2065,8 @@ keySlots.forEach(
 
                         event.preventDefault();
 
-
                         slot.textContent =
                             event.key;
-
 
                         document.removeEventListener(
                             'keydown',
@@ -2221,57 +2074,36 @@ keySlots.forEach(
                         );
 
 
-                        const parent =
-                            slot.closest(
-                                '[id]'
-                            );
+                        const parSlot =
+                            slot.parentNode.id;
 
-
-                        if (!parent) {
+                        if (!parSlot) {
                             return;
                         }
 
-
-                        const parentSlot =
-                            parent.id;
-
-
                         if (
                             !keyConfig[
-                                parentSlot
+                                parSlot
                             ]
                         ) {
 
                             keyConfig[
-                                parentSlot
+                                parSlot
                             ] = {};
                         }
 
 
                         const key =
                             slot.className
-                                .split(/\s+/)
-                                .find(
-                                    function (name) {
-                                        return name
-                                            .toLowerCase()
-                                            .includes(
-                                                'keyslot'
-                                            );
-                                    }
+                                .replace(
+                                    / /g,
+                                    '-'
                                 );
 
 
-                        if (!key) {
-                            return;
-                        }
-
-
                         keyConfig[
-                            parentSlot
-                        ][
-                            key
-                        ] =
+                            parSlot
+                        ][key] =
                             event.key;
 
 
@@ -2301,118 +2133,112 @@ keySlots.forEach(
 const pressedKeys = {};
 
 
-function onKeyRelease(
-    event
-) {
+function onKeyRelease(event) {
 
     const key =
         event.key.toLowerCase();
-
 
     pressedKeys[key] =
         false;
 }
 
 
-function onKeyPress(
-    event
-) {
+function onKeyPress(event) {
 
     const key =
         event.key.toLowerCase();
-
 
     pressedKeys[key] =
         true;
 
 
-    Object.keys(
-        keyConfig
-    ).forEach(
-        function (slot) {
+    for (
+        const slot in keyConfig
+    ) {
 
-            const settings =
-                keyConfig[slot];
-
-
-            if (!settings) {
-                return;
-            }
-
-
-            const key1 =
-                settings[
-                    'keySlot-1'
-                ];
-
-
-            const key2 =
-                settings[
-                    'keySlot-2'
-                ];
-
-
-            const key3 =
-                settings[
-                    'keySlot-3'
-                ];
-
-
-            const action =
-                settings[
-                    'slot-action'
-                ];
-
-
-            if (
-                !key1 ||
-                !key2 ||
-                !action
-            ) {
-                return;
-            }
-
-
-            const key1Config =
-                key1.toLowerCase();
-
-
-            const key2Config =
-                key2.toLowerCase();
-
-
-            const key3Config =
-                key3
-                    ? key3.toLowerCase()
-                    : '';
-
-
-            if (
-                pressedKeys[key1Config] &&
-                pressedKeys[key2Config] &&
-                (
-                    key3Config
-                        ? pressedKeys[
-                            key3Config
-                          ]
-                        : true
+        if (
+            !Object.prototype.hasOwnProperty
+                .call(
+                    keyConfig,
+                    slot
                 )
-            ) {
+        ) {
+            continue;
+        }
 
-                try {
+        const config =
+            keyConfig[slot];
 
-                    eval(action);
+        if (
+            !config ||
+            !config[
+                'keySlot-1'
+            ] ||
+            !config[
+                'keySlot-2'
+            ] ||
+            !config[
+                'slot-action'
+            ]
+        ) {
+            continue;
+        }
 
-                } catch (error) {
 
-                    console.error(
-                        'Key action failed:',
-                        error
-                    );
-                }
+        const key1Config =
+            config[
+                'keySlot-1'
+            ].toLowerCase();
+
+        const key2Config =
+            config[
+                'keySlot-2'
+            ].toLowerCase();
+
+        const key3Config =
+            (
+                config[
+                    'keySlot-3'
+                ] || ''
+            ).toLowerCase();
+
+
+        if (
+            pressedKeys[
+                key1Config
+            ] &&
+            pressedKeys[
+                key2Config
+            ] &&
+            (
+                key3Config
+                    ? pressedKeys[
+                        key3Config
+                    ]
+                    : true
+            )
+        ) {
+
+            try {
+
+                /*
+                 * Existing action system.
+                 */
+                eval(
+                    config[
+                        'slot-action'
+                    ]
+                );
+
+            } catch (error) {
+
+                console.error(
+                    'Key action failed:',
+                    error
+                );
             }
         }
-    );
+    }
 }
 
 
@@ -2420,7 +2246,6 @@ document.addEventListener(
     'keydown',
     onKeyPress
 );
-
 
 document.addEventListener(
     'keyup',
@@ -2435,12 +2260,18 @@ document.addEventListener(
 /*
  * IMPORTANT:
  *
- * <input type="color"> does NOT accept:
+ * input[type="color"] does NOT accept:
  *
  * #373737a6
- * #111
  *
- * So these are changed to valid 6-digit colors.
+ * It only accepts normal 6-digit colors.
+ *
+ * So the settings inputs use:
+ *
+ * #373737
+ *
+ * while the CSS variable can still be changed
+ * separately if you need transparency.
  */
 
 const defaultColorSettings = {
@@ -2471,28 +2302,24 @@ const defaultColorSettings = {
 };
 
 
-let colorSettings = {};
+const savedColorSettings =
+    JSON.parse(
+        localStorage.getItem(
+            'colorSettings'
+        ) || 'null'
+    );
 
 
-try {
+const colorSettings = {
 
-    colorSettings =
-        JSON.parse(
-            localStorage.getItem(
-                'colorSettings'
-            )
-        ) ||
-        defaultColorSettings;
+    ...defaultColorSettings,
 
-} catch (error) {
-
-    colorSettings =
-        defaultColorSettings;
-}
+    ...(savedColorSettings || {})
+};
 
 
 /* ---------------------------------------------------------
-   APPLY COLORS
+   LOAD COLOR INPUTS
    --------------------------------------------------------- */
 
 Object.keys(
@@ -2500,65 +2327,48 @@ Object.keys(
 ).forEach(
     function (key) {
 
-        const input =
+        const inputElement =
             document.getElementById(
                 key
             );
 
+        if (!inputElement) {
+            return;
+        }
 
-        if (input) {
+        /*
+         * Color inputs require #RRGGBB.
+         */
+        if (
+            /^#[0-9A-Fa-f]{6}$/
+                .test(
+                    colorSettings[key]
+                )
+        ) {
 
-            /*
-             * type=color needs a valid
-             * 6-digit hexadecimal value.
-             */
-
-            let value =
+            inputElement.value =
                 colorSettings[key];
 
+        } else {
 
-            if (
-                /^#[0-9a-fA-F]{8}$/.test(
-                    value
-                )
-            ) {
-
-                value =
-                    value.substring(
+            /*
+             * Strip alpha if an old saved value
+             * contained it.
+             */
+            const cleaned =
+                colorSettings[key]
+                    .substring(
                         0,
                         7
                     );
-            }
-
 
             if (
-                /^#[0-9a-fA-F]{3}$/.test(
-                    value
-                )
+                /^#[0-9A-Fa-f]{6}$/
+                    .test(cleaned)
             ) {
 
-                value =
-                    '#' +
-                    value[1] +
-                    value[1] +
-                    value[2] +
-                    value[2] +
-                    value[3] +
-                    value[3];
-            }
-
-
-            if (
-                /^#[0-9a-fA-F]{6}$/.test(
-                    value
-                )
-            ) {
-
-                input.value =
-                    value;
-
-                colorSettings[key] =
-                    value;
+                inputElement.value =
+                    cleaned;
             }
         }
     }
@@ -2566,7 +2376,7 @@ Object.keys(
 
 
 /* ---------------------------------------------------------
-   CSS VARIABLES
+   APPLY COLORS
    --------------------------------------------------------- */
 
 Object.entries(
@@ -2574,17 +2384,18 @@ Object.entries(
 ).forEach(
     function ([key, value]) {
 
-        document.documentElement.style.setProperty(
-            '--' + key,
-            value
-        );
+        document.documentElement
+            .style.setProperty(
+                `--${key}`,
+                value
+            );
     }
 );
 
 
-/* =========================================================
-   SAVE COLOR CHANGES
-   ========================================================= */
+/* ---------------------------------------------------------
+   SAVE COLORS
+   --------------------------------------------------------- */
 
 function saveColorChanges() {
 
@@ -2593,18 +2404,25 @@ function saveColorChanges() {
             'input[type="color"]'
         );
 
-
     const newColorSettings =
         {};
-
 
     inputs.forEach(
         function (input) {
 
-            newColorSettings[
-                input.id
-            ] =
-                input.value;
+            if (
+                input.id &&
+                /^#[0-9A-Fa-f]{6}$/
+                    .test(
+                        input.value
+                    )
+            ) {
+
+                newColorSettings[
+                    input.id
+                ] =
+                    input.value;
+            }
         }
     );
 
@@ -2622,18 +2440,19 @@ function saveColorChanges() {
     ).forEach(
         function ([key, value]) {
 
-            document.documentElement.style.setProperty(
-                '--' + key,
-                value
-            );
+            document.documentElement
+                .style.setProperty(
+                    `--${key}`,
+                    value
+                );
         }
     );
 }
 
 
-/* =========================================================
+/* ---------------------------------------------------------
    RESTORE COLORS
-   ========================================================= */
+   --------------------------------------------------------- */
 
 function restoreColorChanges() {
 
@@ -2647,20 +2466,18 @@ function restoreColorChanges() {
     ).forEach(
         function ([key, value]) {
 
-            document.documentElement.style.setProperty(
-                '--' + key,
-                value
-            );
-
+            document.documentElement
+                .style.setProperty(
+                    `--${key}`,
+                    value
+                );
 
             const input =
                 document.getElementById(
                     key
                 );
 
-
             if (input) {
-
                 input.value =
                     value;
             }
@@ -2680,8 +2497,31 @@ function randomGame() {
             '#gamesList li'
         );
 
+    if (
+        !gameLinks.length
+    ) {
+        return;
+    }
 
-    if (!gameLinks.length) {
+
+    /*
+     * Only choose games that actually have
+     * a URL.
+     */
+    const validGames =
+        Array.from(
+            gameLinks
+        ).filter(
+            function (game) {
+
+                return game.getAttribute(
+                    'url'
+                );
+            }
+        );
+
+
+    if (!validGames.length) {
         return;
     }
 
@@ -2689,12 +2529,14 @@ function randomGame() {
     const randomIndex =
         Math.floor(
             Math.random() *
-            gameLinks.length
+            validGames.length
         );
 
 
     const randomGameLink =
-        gameLinks[randomIndex];
+        validGames[
+            randomIndex
+        ];
 
 
     const gameUrl =
@@ -2703,12 +2545,9 @@ function randomGame() {
         );
 
 
-    if (gameUrl) {
-
-        openGameInNewTab(
-            gameUrl
-        );
-    }
+    openGameInNewTab(
+        gameUrl
+    );
 }
 
 
@@ -2716,13 +2555,17 @@ function randomGame() {
    PREFERENCES
    ========================================================= */
 
+/*
+ * CLOAK IS OFF BY DEFAULT.
+ */
+
 const preferencesDefaults = {
 
     cloak:
-        true,
+        false,
 
     cloakUrl:
-        'https://classroom.google.com',
+        'https://classroom.google.com/',
 
     mask:
         true,
@@ -2738,50 +2581,60 @@ const preferencesDefaults = {
 };
 
 
-let preferences;
+/* ---------------------------------------------------------
+   LOAD PREFERENCES
+   --------------------------------------------------------- */
+
+let storedPreferences =
+    localStorage.getItem(
+        'preferences'
+    );
 
 
-try {
+if (
+    storedPreferences ===
+    null
+) {
 
-    const savedPreferences =
-        localStorage.getItem(
-            'preferences'
+    localStorage.setItem(
+        'preferences',
+        JSON.stringify(
+            preferencesDefaults
+        )
+    );
+
+    storedPreferences =
+        JSON.stringify(
+            preferencesDefaults
         );
-
-
-    if (!savedPreferences) {
-
-        localStorage.setItem(
-            'preferences',
-            JSON.stringify(
-                preferencesDefaults
-            )
-        );
-
-
-        preferences =
-            {
-                ...preferencesDefaults
-            };
-
-    } else {
-
-        preferences =
-            {
-                ...preferencesDefaults,
-                ...JSON.parse(
-                    savedPreferences
-                )
-            };
-    }
-
-} catch (error) {
-
-    preferences =
-        {
-            ...preferencesDefaults
-        };
 }
+
+
+/*
+ * Merge with defaults so newly-added settings
+ * don't become undefined.
+ */
+
+const preferences = {
+
+    ...preferencesDefaults,
+
+    ...JSON.parse(
+        storedPreferences
+    )
+};
+
+
+/*
+ * Save the merged preferences.
+ */
+
+localStorage.setItem(
+    'preferences',
+    JSON.stringify(
+        preferences
+    )
+);
 
 
 /* =========================================================
@@ -2793,30 +2646,25 @@ const cloakCheckbox =
         'cloakCheckboxInput'
     );
 
-
 const backgroundCheckbox =
     document.getElementById(
         'backgroundCheckboxInput'
     );
-
 
 const cloakUrl =
     document.getElementById(
         'cloakUrlInput'
     );
 
-
 const maskCheckbox =
     document.getElementById(
         'maskCheckboxInput'
     );
 
-
 const maskTitle =
     document.getElementById(
         'maskTitleInput'
     );
-
 
 const maskIcon =
     document.getElementById(
@@ -2827,7 +2675,7 @@ const maskIcon =
 if (cloakCheckbox) {
 
     cloakCheckbox.checked =
-        !!preferences.cloak;
+        preferences.cloak;
 }
 
 
@@ -2841,7 +2689,7 @@ if (cloakUrl) {
 if (maskCheckbox) {
 
     maskCheckbox.checked =
-        !!preferences.mask;
+        preferences.mask;
 }
 
 
@@ -2862,7 +2710,7 @@ if (maskIcon) {
 if (backgroundCheckbox) {
 
     backgroundCheckbox.checked =
-        !!preferences.background;
+        preferences.background;
 }
 
 
@@ -2925,26 +2773,20 @@ const presets = {
 };
 
 
-function setPreset(
-    object
-) {
+function setPreset(object) {
 
     if (!object) {
         return;
     }
 
-
     preferences.cloakUrl =
         object.url;
-
 
     preferences.maskTitle =
         object.title;
 
-
     preferences.maskIconUrl =
         object.icon;
-
 
     localStorage.setItem(
         'preferences',
@@ -2952,7 +2794,6 @@ function setPreset(
             preferences
         )
     );
-
 
     alert(
         'Preset will take place upon next opening!'
@@ -2962,35 +2803,31 @@ function setPreset(
 
 function updatePreset() {
 
-    const select =
+    const presetElement =
         document.getElementById(
             'presets'
         );
 
-
-    if (!select) {
+    if (!presetElement) {
         return;
     }
 
-
-    const preset =
+    setPreset(
         presets[
-            select.value
-        ];
-
-
-    if (preset) {
-
-        setPreset(
-            preset
-        );
-    }
+            presetElement.value
+        ]
+    );
 }
 
 
 /* =========================================================
    CLOAK STARTUP
    ========================================================= */
+
+/*
+ * Because the default is now FALSE, this section
+ * will NOT run on a fresh installation.
+ */
 
 if (
     preferences.cloak &&
@@ -3015,7 +2852,6 @@ if (
             }
         );
 
-
         currentMenu =
             $('.cloaklaunch');
 
@@ -3032,12 +2868,10 @@ if (
                     $('.cloaklaunch')
                         .fadeOut(200);
 
-
                     setTimeout(
                         returnHome,
                         200
                     );
-
 
                     return;
                 }
@@ -3049,7 +2883,6 @@ if (
                     event.target.className !==
                         'cloaker'
                 ) {
-
                     return;
                 }
 
@@ -3076,7 +2909,6 @@ if (maskCheckbox) {
             preferences.mask =
                 maskCheckbox.checked;
 
-
             localStorage.setItem(
                 'preferences',
                 JSON.stringify(
@@ -3096,7 +2928,6 @@ if (cloakCheckbox) {
 
             preferences.cloak =
                 cloakCheckbox.checked;
-
 
             localStorage.setItem(
                 'preferences',
@@ -3118,7 +2949,6 @@ if (backgroundCheckbox) {
             preferences.background =
                 backgroundCheckbox.checked;
 
-
             localStorage.setItem(
                 'preferences',
                 JSON.stringify(
@@ -3126,15 +2956,8 @@ if (backgroundCheckbox) {
                 )
             );
 
-
-            if (
-                typeof inGame !==
-                'undefined'
-            ) {
-
-                inGame =
-                    !preferences.background;
-            }
+            window.inGame =
+                !preferences.background;
         }
     );
 }
@@ -3160,10 +2983,8 @@ if (cloakUrlSubmit) {
                 return;
             }
 
-
             preferences.cloakUrl =
                 cloakUrl.value;
-
 
             localStorage.setItem(
                 'preferences',
@@ -3171,7 +2992,6 @@ if (cloakUrlSubmit) {
                     preferences
                 )
             );
-
 
             alert(
                 'Submitted! Change will take place upon refresh'
@@ -3201,10 +3021,8 @@ if (maskTitleSubmit) {
                 return;
             }
 
-
             preferences.maskTitle =
                 maskTitle.value;
-
 
             localStorage.setItem(
                 'preferences',
@@ -3212,7 +3030,6 @@ if (maskTitleSubmit) {
                     preferences
                 )
             );
-
 
             alert(
                 'Submitted! Change will take place upon refresh'
@@ -3242,10 +3059,8 @@ if (maskIconSubmit) {
                 return;
             }
 
-
             preferences.maskIconUrl =
                 maskIcon.value;
-
 
             localStorage.setItem(
                 'preferences',
@@ -3253,7 +3068,6 @@ if (maskIconSubmit) {
                     preferences
                 )
             );
-
 
             alert(
                 'Submitted! Change will take place upon refresh'
@@ -3277,7 +3091,9 @@ if (downloadButton) {
 
     downloadButton.addEventListener(
         'click',
-        downloadMainSave
+        function () {
+            downloadMainSave();
+        }
     );
 }
 
@@ -3292,7 +3108,9 @@ if (uploadButton) {
 
     uploadButton.addEventListener(
         'click',
-        uploadMainSave
+        function () {
+            uploadMainSave();
+        }
     );
 }
 
@@ -3313,9 +3131,25 @@ if (
    INITIAL GAME LIST UPDATE
    ========================================================= */
 
-$(document).ready(
-    function () {
+if (
+    document.getElementById(
+        'gamesList'
+    )
+) {
 
-        updateList();
-    }
+    updateList();
+}
+
+
+/* =========================================================
+   DONE
+   ========================================================= */
+
+console.log(
+    'MonkeyGG2 script loaded successfully.'
+);
+
+console.log(
+    'Cloak default:',
+    preferences.cloak
 );
