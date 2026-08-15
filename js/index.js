@@ -38,64 +38,74 @@ $('dialog').on('click', function (e) {
 });
 
 
-/* ============================================================
-   GAME URL HANDLING
-   ============================================================ */
-
-/*
- * Converts a game path into a URL using the domain the website
- * is currently running on.
- *
- * Example:
- *
- * /games/basket-random
- *
- * becomes:
- *
- * https://monkegg2.onrender.com/games/basket-random
- *
- * when running on Render.
- *
- * On GitHub Pages it automatically becomes:
- *
- * https://monkeygg2.github.io/games/basket-random
- *
- * This means you do NOT need to hard-code the domain.
- */
-function getGameUrl(gamePath) {
-    if (!gamePath) {
-        return null;
-    }
-
-    try {
-        return new URL(gamePath, window.location.origin).href;
-    } catch (error) {
-        console.error('Invalid game URL:', gamePath, error);
-        return null;
-    }
-}
-
+/* =========================================================
+   GAME OPENING
+   ========================================================= */
 
 /*
  * Opens a game in a new tab.
+ *
+ * Relative URLs such as:
+ *
+ * /games/ampler-launcher/mc/1.12.2
+ *
+ * automatically use the current website's domain.
+ *
+ * So on Render:
+ *
+ * https://monkegg2.onrender.com
+ *
+ * it becomes:
+ *
+ * https://monkegg2.onrender.com/games/ampler-launcher/mc/1.12.2
  */
-function openGame(gamePath) {
-    const gameUrl = getGameUrl(gamePath);
-
+function openGameInNewTab(gameUrl) {
     if (!gameUrl) {
-        console.error('Could not open game:', gamePath);
+        console.error('Game URL is missing.');
         return;
     }
 
-    console.log('Opening game:', gameUrl);
+    try {
+        const fullUrl = new URL(gameUrl, window.location.origin).href;
 
-    window.open(gameUrl, '_blank');
+        window.open(
+            fullUrl,
+            '_blank',
+            'noopener,noreferrer'
+        );
+    } catch (error) {
+        console.error('Could not open game:', error);
+    }
 }
 
 
-/* ============================================================
+/*
+ * Game list click handler.
+ *
+ * Every game only needs a "url" attribute.
+ *
+ * Example:
+ *
+ * <li url="/games/basket-random">Basket Random</li>
+ *
+ * <li url="/games/ampler-launcher/mc/1.12.2">
+ *     Ampler Launcher
+ * </li>
+ */
+$(document).on('click', '#gamesList li', function (event) {
+    event.preventDefault();
+
+    const gameUrl = this.getAttribute('url');
+
+    if (gameUrl) {
+        openGameInNewTab(gameUrl);
+    }
+});
+
+
+/* =========================================================
    JARO SIMILARITY
-   ============================================================ */
+   ========================================================= */
 
 function jaro_distance(s1, s2) {
     if (s1 == s2) return 1.0;
@@ -121,7 +131,10 @@ function jaro_distance(s1, s2) {
             j < Math.min(len2, i + max_dist + 1);
             j++
         ) {
-            if (s1[i] == s2[j] && hash_s2[j] == 0) {
+            if (
+                s1[i] == s2[j] &&
+                hash_s2[j] == 0
+            ) {
                 hash_s1[i] = 1;
                 hash_s2[j] = 1;
                 match++;
@@ -137,24 +150,19 @@ function jaro_distance(s1, s2) {
 
     for (let i = 0; i < len1; i++) {
         if (hash_s1[i] == 1) {
-            while (hash_s2[point] == 0) {
-                point++;
-            }
+            while (hash_s2[point] == 0) point++;
 
-            if (s1[i] != s2[point++]) {
-                t++;
-            }
+            if (s1[i] != s2[point++]) t++;
         }
     }
 
     t /= 2;
 
     return (
-        (match / len1 +
-            match / len2 +
-            (match - t) / match) /
-        3.0
-    );
+        match / len1 +
+        match / len2 +
+        (match - t) / match
+    ) / 3.0;
 }
 
 
@@ -179,16 +187,18 @@ function jaroWinklerSimilarity(s1, s2) {
         prefix = Math.min(4, prefix);
 
         jaro_dist +=
-            0.1 * prefix * (1 - jaro_dist);
+            0.1 *
+            prefix *
+            (1 - jaro_dist);
     }
 
     return jaro_dist.toFixed(6);
 }
 
 
-/* ============================================================
+/* =========================================================
    GAME LIST
-   ============================================================ */
+   ========================================================= */
 
 function updateList() {
     const filter = $('#search').val().toLowerCase();
@@ -218,7 +228,7 @@ function updateList() {
 
         if (item.getAttribute('aliases')) {
             for (
-                let alias of item
+                alias of item
                     .getAttribute('aliases')
                     .split(',')
             ) {
@@ -234,8 +244,10 @@ function updateList() {
         }
 
         if (
-            (similarity >= 0.7 &&
-                item.innerHTML.length > 2) ||
+            (
+                similarity >= 0.7 &&
+                item.innerHTML.length > 2
+            ) ||
             item.innerHTML
                 .toLowerCase()
                 .indexOf(filter) > -1
@@ -246,6 +258,7 @@ function updateList() {
         }
     });
 
+
     elems.sort(function (a, b) {
         let distanceA = jaroWinklerSimilarity(
             filter,
@@ -254,7 +267,7 @@ function updateList() {
 
         if (a.getAttribute('aliases')) {
             for (
-                let alias of a
+                alias of a
                     .getAttribute('aliases')
                     .split(',')
             ) {
@@ -272,7 +285,7 @@ function updateList() {
 
         if (b.getAttribute('aliases')) {
             for (
-                let alias of b
+                alias of b
                     .getAttribute('aliases')
                     .split(',')
             ) {
@@ -286,6 +299,7 @@ function updateList() {
         return distanceA - distanceB;
     });
 
+
     for (const item of elems) {
         document
             .getElementById('gamesList')
@@ -295,21 +309,27 @@ function updateList() {
     }
 }
 
+
 $('#search').on('input', updateList);
 $('#sort').on('change', updateList);
 
 
-/* ============================================================
-   DRAGGING
-   ============================================================ */
+/* =========================================================
+   DRAG BUTTONS
+   ========================================================= */
 
-dragElement(document.getElementById('gameButton'));
-dragElement(document.getElementById('refresh'));
+dragElement(
+    document.getElementById('gameButton')
+);
+
+dragElement(
+    document.getElementById('refresh')
+);
 
 
-/* ============================================================
+/* =========================================================
    EASTER EGGS
-   ============================================================ */
+   ========================================================= */
 
 const sequences = [
     {
@@ -328,6 +348,7 @@ const sequences = [
         ],
         action: () => alert('No easter egg here')
     },
+
     {
         keys: [
             'KeyL',
@@ -346,6 +367,7 @@ const sequences = [
     }
 ];
 
+
 let index = 0;
 
 document.addEventListener('keydown', (event) => {
@@ -360,7 +382,9 @@ document.addEventListener('keydown', (event) => {
                 sequence.action();
                 index = 0;
             }
-        } else if (event.code === sequence.keys[0]) {
+        } else if (
+            event.code === sequence.keys[0]
+        ) {
             failed = false;
             index = 1;
         }
@@ -372,9 +396,9 @@ document.addEventListener('keydown', (event) => {
 });
 
 
-/* ============================================================
+/* =========================================================
    SNOW
-   ============================================================ */
+   ========================================================= */
 
 function snow() {
     function i() {
@@ -384,14 +408,12 @@ function snow() {
             l.save();
             l.translate(this.b, this.a);
             l.rotate(-t);
-
             l.scale(
                 this.e,
-                this.e *
-                    h.max(
-                        1,
-                        h.pow(this.j, 0.7) / 15
-                    )
+                this.e * h.max(
+                    1,
+                    h.pow(this.j, 0.7) / 15
+                )
             );
 
             l.drawImage(
@@ -404,14 +426,23 @@ function snow() {
         };
     }
 
+    window;
+
     const h = Math;
     const r = h.random;
     const a = document;
     const o = Date.now;
 
-    (e = (t) => {
-        l.clearRect(0, 0, _, f);
+    e = (t) => {
+        l.clearRect(
+            0,
+            0,
+            _,
+            f
+        );
+
         l.fill();
+
         requestAnimationFrame(e);
 
         const i = 0.001 * y.et;
@@ -420,11 +451,20 @@ function snow() {
 
         const s = L.et * g;
 
-        for (var n = 0; n < C.length; ++n) {
+        for (
+            var n = 0;
+            n < C.length;
+            ++n
+        ) {
             const t = C[n];
 
-            t.i = h.sin(s + t.g) * t.h;
-            t.j = h.sqrt(t.i * t.i + t.f);
+            t.i = h.sin(
+                s + t.g
+            ) * t.h;
+
+            t.j = h.sqrt(
+                t.i * t.i + t.f
+            );
 
             t.a += t.d * i;
             t.b += t.i * i;
@@ -435,16 +475,23 @@ function snow() {
 
             t.D();
         }
-    });
+    };
 
-    (s = (t) => {
-        for (var e = 0; e < p; ++e) {
-            C[e].a = r() * (f + u);
-            C[e].b = r() * _;
+    s = (t) => {
+        for (
+            var e = 0;
+            e < p;
+            ++e
+        ) {
+            C[e].a =
+                r() * (f + u);
+
+            C[e].b =
+                r() * _;
         }
-    });
+    };
 
-    (n = (t) => {
+    n = (t) => {
         c.width = _ = innerWidth;
         c.height = f = innerHeight;
 
@@ -452,7 +499,8 @@ function snow() {
         b = _ + u;
 
         s();
-    });
+    };
+
 
     class d {
         constructor(t, e = !0) {
@@ -488,29 +536,39 @@ function snow() {
         }
 
         s() {
-            this._ts = o() - this.et;
+            this._ts =
+                o() - this.et;
+
             this._p = !1;
+
             return this;
         }
 
         r() {
-            this._pa = this._ts = o();
+            this._pa =
+                this._ts =
+                o();
+
             return this;
         }
 
         p() {
-            this._p = !0;
+            this._p = true;
             this._pa = o();
+
             return this;
         }
 
         st() {
-            this._p = !0;
+            this._p = true;
+
             return this;
         }
     }
 
-    const c = a.createElement('canvas');
+
+    const c =
+        a.createElement('canvas');
 
     H = c.style;
 
@@ -527,31 +585,37 @@ function snow() {
         a.body.children[0]
     );
 
-    const l = c.getContext('2d');
+
+    const l =
+        c.getContext('2d');
 
     const p = 300;
     const g = 5e-4;
     const u = 20;
 
-    let _ = (c.width = innerWidth);
-    let f = (c.height = innerHeight);
+    let _ = c.width = innerWidth;
+    let f = c.height = innerHeight;
 
     let w = f + u;
     let b = _ + u;
 
     const v = 15.2;
 
-    const m = a.createElement('canvas');
-    const E = m.getContext('2d');
+    const m =
+        a.createElement('canvas');
 
-    const x = E.createRadialGradient(
-        7.6,
-        7.6,
-        0,
-        7.6,
-        7.6,
-        7.6
-    );
+    const E =
+        m.getContext('2d');
+
+    const x =
+        E.createRadialGradient(
+            7.6,
+            7.6,
+            0,
+            7.6,
+            7.6,
+            7.6
+        );
 
     x.addColorStop(
         0,
@@ -572,17 +636,27 @@ function snow() {
         v
     );
 
-    let y = new d(0, !0);
-    let C = [];
-    let L = new d(0, !0);
 
-    for (var j = 0; j < p; ++j) {
+    let y = new d(0, true);
+    let C = [];
+    let L = new d(0, true);
+
+
+    for (
+        var j = 0;
+        j < p;
+        ++j
+    ) {
         const t = new i();
 
-        t.a = r() * (f + u);
-        t.b = r() * _;
+        t.a =
+            r() * (f + u);
 
-        t.c = 1 * (3 * r() + 0.8);
+        t.b =
+            r() * _;
+
+        t.c =
+            1 * (3 * r() + 0.8);
 
         t.d =
             0.1 *
@@ -590,22 +664,29 @@ function snow() {
             50 *
             (2 * r() + 1);
 
-        t.d = t.d < 65 ? 65 : t.d;
+        t.d =
+            t.d < 65
+                ? 65
+                : t.d;
 
-        t.e = t.c / 7.6;
-        t.f = t.d * t.d;
+        t.e =
+            t.c / 7.6;
+
+        t.f =
+            t.d * t.d;
 
         t.g =
-            (r() * h.PI) /
-            1.3;
+            (r() * h.PI) / 1.3;
 
-        t.h = 15 * t.c;
+        t.h =
+            15 * t.c;
 
         t.i = 0;
         t.j = 0;
 
         C.push(t);
     }
+
 
     s();
 
@@ -614,28 +695,30 @@ function snow() {
     EL(
         'visibilitychange',
         () => setTimeout(n, 100),
-        !1
+        false
     );
 
     EL(
         'resize',
         n,
-        !1
+        false
     );
 
     e();
 }
 
 
-/* ============================================================
+/* =========================================================
    DRAG ELEMENT
-   ============================================================ */
+   ========================================================= */
 
 function dragElement(elmnt) {
-    var pos1 = 0;
-    var pos2 = 0;
-    var pos3 = 0;
-    var pos4 = 0;
+    if (!elmnt) return;
+
+    let pos1 = 0;
+    let pos2 = 0;
+    let pos3 = 0;
+    let pos4 = 0;
 
     if (document.getElementById(elmnt.id)) {
         document.getElementById(
@@ -645,8 +728,10 @@ function dragElement(elmnt) {
         elmnt.onmousedown = dragMouseDown;
     }
 
+
     function dragMouseDown(e) {
         e = e || window.event;
+
         e.preventDefault();
 
         pos3 = e.clientX;
@@ -659,12 +744,17 @@ function dragElement(elmnt) {
             elementDrag;
     }
 
+
     function elementDrag(e) {
         e = e || window.event;
+
         e.preventDefault();
 
-        pos1 = pos3 - e.clientX;
-        pos2 = pos4 - e.clientY;
+        pos1 =
+            pos3 - e.clientX;
+
+        pos2 =
+            pos4 - e.clientY;
 
         pos3 = e.clientX;
         pos4 = e.clientY;
@@ -676,6 +766,7 @@ function dragElement(elmnt) {
             pos2 +
             'px';
     }
+
 
     function closeDragElement() {
         document.onmouseup = null;
@@ -693,28 +784,27 @@ function dragElement(elmnt) {
 }
 
 
-/* ============================================================
-   RETURN HOME
-   ============================================================ */
+/* =========================================================
+   HOME
+   ========================================================= */
 
 function returnHome() {
     currentMenu.fadeOut(300, () => {
         $('#everything-else').fadeIn(200);
-
         $('.games').hide();
-
         $('.homepage').fadeIn(200);
     });
 
     currentMenu = $('.homepage');
 
-    inGame = !preferences.background;
+    inGame =
+        !preferences.background;
 }
 
 
-/* ============================================================
+/* =========================================================
    REFRESH
-   ============================================================ */
+   ========================================================= */
 
 function refreshPage() {
     const oldUrl =
@@ -736,9 +826,9 @@ function refreshPage() {
 }
 
 
-/* ============================================================
+/* =========================================================
    CLOAK
-   ============================================================ */
+   ========================================================= */
 
 function makecloak(
     replaceUrl = preferences.cloakUrl
@@ -747,7 +837,8 @@ function makecloak(
         window.top.location.href !==
         'about:blank'
     ) {
-        var url = window.location.href;
+        const url =
+            window.location.href;
 
         const win = window.open();
 
@@ -759,10 +850,13 @@ function makecloak(
             return;
         }
 
-        win.document.body.style.margin = '0';
-        win.document.body.style.height = '100vh';
+        win.document.body.style.margin =
+            '0';
 
-        var iframe =
+        win.document.body.style.height =
+            '100vh';
+
+        const iframe =
             win.document.createElement(
                 'iframe'
             );
@@ -777,7 +871,8 @@ function makecloak(
 
         iframe.allow = 'fullscreen';
 
-        iframe.src = url.toString();
+        iframe.src =
+            url.toString();
 
         win.document.body.appendChild(
             iframe
@@ -790,42 +885,48 @@ function makecloak(
 }
 
 
-/* ============================================================
+/* =========================================================
    MASK
-   ============================================================ */
+   ========================================================= */
 
 function mask(
     title = preferences.maskTitle,
     iconUrl = preferences.maskIconUrl
 ) {
-    const e = window.top.document;
+    const e =
+        window.top.document;
 
     e.title = title;
 
-    var link =
+    const link =
         e.querySelector(
             "link[rel*='icon']"
         ) ||
         document.createElement('link');
 
-    link.type = 'image/x-icon';
-    link.rel = 'shortcut icon';
-    link.href = iconUrl;
+    link.type =
+        'image/x-icon';
 
-    e.getElementsByTagName(
-        'head'
-    )[0].appendChild(link);
+    link.rel =
+        'shortcut icon';
+
+    link.href =
+        iconUrl;
+
+    e.getElementsByTagName('head')[0]
+        .appendChild(link);
 }
 
 
-/* ============================================================
+/* =========================================================
    POPUPS
-   ============================================================ */
+   ========================================================= */
 
 function popupsAllowed() {
-    var windowName = 'userConsole';
+    const windowName =
+        'userConsole';
 
-    var popUp = window.open(
+    const popUp = window.open(
         '/popup-page.php',
         windowName,
         'width=1000, height=700, left=24, top=24, scrollbars, resizable'
@@ -843,41 +944,48 @@ function popupsAllowed() {
 }
 
 
-/* ============================================================
+/* =========================================================
    MUTE
-   ============================================================ */
+   ========================================================= */
 
 function toggleMute() {
     // cant find working code rn
 }
 
 
-/* ============================================================
+/* =========================================================
    SAVE SYSTEM
-   ============================================================ */
+   ========================================================= */
 
 function getMainSave() {
-    var mainSave = {};
+    let mainSave = {};
 
-    localStorageSave =
+    let localStorageSave =
         Object.entries(localStorage);
 
-    localStorageSave = btoa(
-        JSON.stringify(localStorageSave)
-    );
+    localStorageSave =
+        btoa(
+            JSON.stringify(
+                localStorageSave
+            )
+        );
 
     mainSave.localStorage =
         localStorageSave;
 
-    cookiesSave = document.cookie;
+    let cookiesSave =
+        document.cookie;
 
-    cookiesSave = btoa(cookiesSave);
+    cookiesSave =
+        btoa(cookiesSave);
 
-    mainSave.cookies = cookiesSave;
+    mainSave.cookies =
+        cookiesSave;
 
-    mainSave = btoa(
-        JSON.stringify(mainSave)
-    );
+    mainSave =
+        btoa(
+            JSON.stringify(mainSave)
+        );
 
     mainSave =
         CryptoJS.AES.encrypt(
@@ -890,17 +998,19 @@ function getMainSave() {
 
 
 function downloadMainSave() {
-    var data = new Blob([
-        getMainSave()
-    ]);
+    const data =
+        new Blob([
+            getMainSave()
+        ]);
 
-    var dataURL =
+    const dataURL =
         URL.createObjectURL(data);
 
-    var fakeElement =
+    const fakeElement =
         document.createElement('a');
 
-    fakeElement.href = dataURL;
+    fakeElement.href =
+        dataURL;
 
     fakeElement.download =
         'monkey.data';
@@ -920,24 +1030,23 @@ function getMainSaveFromUpload(data) {
             CryptoJS.enc.Utf8
         );
 
-    var mainSave =
+    const mainSave =
         JSON.parse(
             atob(data)
         );
 
-    var mainLocalStorageSave =
+    const mainLocalStorageSave =
         JSON.parse(
             atob(
                 mainSave.localStorage
             )
         );
 
-    var cookiesSave =
+    const cookiesSave =
         atob(mainSave.cookies);
 
     for (
-        let item in
-        mainLocalStorageSave
+        let item in mainLocalStorageSave
     ) {
         localStorage.setItem(
             mainLocalStorageSave[item][0],
@@ -951,11 +1060,14 @@ function getMainSaveFromUpload(data) {
 
 
 function uploadMainSave() {
-    var hiddenUpload =
+    const hiddenUpload =
         document.createElement('input');
 
-    hiddenUpload.type = 'file';
-    hiddenUpload.accept = '.data';
+    hiddenUpload.type =
+        'file';
+
+    hiddenUpload.accept =
+        '.data';
 
     document.body.appendChild(
         hiddenUpload
@@ -966,16 +1078,17 @@ function uploadMainSave() {
     hiddenUpload.addEventListener(
         'change',
         function (e) {
-            var files =
+            const files =
                 e.target.files;
 
-            var file = files[0];
+            const file =
+                files[0];
 
             if (!file) {
                 return;
             }
 
-            var reader =
+            const reader =
                 new FileReader();
 
             reader.onload =
@@ -984,7 +1097,7 @@ function uploadMainSave() {
                         e.target.result
                     );
 
-                    var uploadResult =
+                    const uploadResult =
                         document.querySelector(
                             '.upload-result'
                         );
@@ -1011,9 +1124,9 @@ function uploadMainSave() {
 }
 
 
-/* ============================================================
+/* =========================================================
    KEY CONFIG
-   ============================================================ */
+   ========================================================= */
 
 const keyConfig =
     JSON.parse(
@@ -1033,42 +1146,45 @@ const actions =
     );
 
 
-for (var slot in keyConfig) {
+for (
+    var slot in keyConfig
+) {
     if (
         keyConfig.hasOwnProperty(slot)
     ) {
         for (
-            var key in
-            keyConfig[slot]
+            var key in keyConfig[slot]
         ) {
             if (
                 keyConfig[slot]
                     .hasOwnProperty(key)
             ) {
-                var correctKey =
+                const correctKey =
                     keyConfig[slot][key];
 
-                var slotDiv =
+                const slotDiv =
                     document.getElementById(
                         slot
                     );
 
                 if (slotDiv) {
+                    let displayKey = key;
+
                     if (
                         key.includes(
                             'keySlot'
                         )
                     ) {
-                        key =
+                        displayKey =
                             key.replace(
                                 /-/g,
                                 ' '
                             );
                     }
 
-                    var keyElement =
+                    const keyElement =
                         slotDiv.getElementsByClassName(
-                            key
+                            displayKey
                         )[0];
 
                     if (keyElement) {
@@ -1080,11 +1196,9 @@ for (var slot in keyConfig) {
                                 correctKey;
                         } else {
                             for (
-                                var i = 0;
+                                let i = 0;
                                 i <
-                                keyElement
-                                    .options
-                                    .length;
+                                keyElement.options.length;
                                 i++
                             ) {
                                 if (
@@ -1113,7 +1227,7 @@ actions.forEach(
         action.addEventListener(
             'change',
             () => {
-                slot =
+                const slot =
                     action.parentNode.id;
 
                 if (!keyConfig[slot]) {
@@ -1154,26 +1268,24 @@ keySlots.forEach(
                             keyPressHandler
                         );
 
-                        parSlot =
+                        const parSlot =
                             event.target
                                 .parentNode.id;
 
                         if (
-                            !keyConfig[
-                                parSlot
-                            ]
+                            !keyConfig[parSlot]
                         ) {
                             keyConfig[
                                 parSlot
                             ] = {};
                         }
 
-                        key =
+                        const key =
                             event.target
                                 .className
                                 .replace(
                                     / /g,
-                                    "-"
+                                    '-'
                                 );
 
                         keyConfig[
@@ -1199,15 +1311,15 @@ keySlots.forEach(
 );
 
 
-/* ============================================================
-   KEYBOARD ACTIONS
-   ============================================================ */
+/* =========================================================
+   CUSTOM KEY ACTIONS
+   ========================================================= */
 
-var pressedKeys = {};
+const pressedKeys = {};
 
 
 function onKeyRelease(event) {
-    var key =
+    const key =
         event.key.toLowerCase();
 
     pressedKeys[key] = false;
@@ -1215,13 +1327,13 @@ function onKeyRelease(event) {
 
 
 function onKeyPress(event) {
-    var key =
+    const key =
         event.key.toLowerCase();
 
     pressedKeys[key] = true;
 
     for (
-        var slot in keyConfig
+        const slot in keyConfig
     ) {
         if (
             keyConfig.hasOwnProperty(slot)
@@ -1231,26 +1343,23 @@ function onKeyPress(event) {
                     'keySlot-1'
                 ] &&
                 keyConfig[slot][
-                    'keySlot-1'
+                    'keySlot-2'
                 ] &&
                 keyConfig[slot][
                     'slot-action'
                 ]
             ) {
-                var keyPressed =
-                    event.key.toLowerCase();
-
-                var key1Config =
+                const key1Config =
                     keyConfig[slot][
                         'keySlot-1'
                     ].toLowerCase();
 
-                var key2Config =
+                const key2Config =
                     keyConfig[slot][
                         'keySlot-2'
                     ].toLowerCase();
 
-                var key3Config =
+                const key3Config =
                     (
                         keyConfig[slot][
                             'keySlot-3'
@@ -1258,17 +1367,11 @@ function onKeyPress(event) {
                     ).toLowerCase();
 
                 if (
-                    pressedKeys[
-                        key1Config
-                    ] &&
-                    pressedKeys[
-                        key2Config
-                    ] &&
+                    pressedKeys[key1Config] &&
+                    pressedKeys[key2Config] &&
                     (
                         key3Config
-                            ? pressedKeys[
-                                  key3Config
-                              ]
+                            ? pressedKeys[key3Config]
                             : true
                     )
                 ) {
@@ -1295,9 +1398,9 @@ document.addEventListener(
 );
 
 
-/* ============================================================
-   COLOR SETTINGS
-   ============================================================ */
+/* =========================================================
+   COLORS
+   ========================================================= */
 
 const defaultColorSettings = {
     bg: '#202020',
@@ -1310,25 +1413,31 @@ const defaultColorSettings = {
     'font-color': '#dcddde'
 };
 
+
 const colorSettings =
     JSON.parse(
         localStorage.getItem(
             'colorSettings'
         )
-    ) || defaultColorSettings;
+    ) ||
+    defaultColorSettings;
 
 
 Object.keys(
     colorSettings
-).forEach((key) => {
-    const inputElement =
-        document.getElementById(key);
+).forEach(
+    (key) => {
+        const inputElement =
+            document.getElementById(
+                key
+            );
 
-    if (inputElement) {
-        inputElement.value =
-            colorSettings[key];
+        if (inputElement) {
+            inputElement.value =
+                colorSettings[key];
+        }
     }
-});
+);
 
 
 Object.entries(
@@ -1397,9 +1506,9 @@ function restoreColorChanges() {
 }
 
 
-/* ============================================================
+/* =========================================================
    RANDOM GAME
-   ============================================================ */
+   ========================================================= */
 
 function randomGame() {
     const gameLinks =
@@ -1414,45 +1523,26 @@ function randomGame() {
     const randomIndex =
         Math.floor(
             Math.random() *
-                gameLinks.length
+            gameLinks.length
         );
 
     const randomGameLink =
         gameLinks[randomIndex];
 
-    const gamePath =
+    const url =
         randomGameLink.getAttribute(
             'url'
         );
 
-    const url =
-        getGameUrl(gamePath);
-
-    if (!url) {
-        return;
+    if (url) {
+        openGameInNewTab(url);
     }
-
-    inGame = true;
-
-    $('#everything-else').fadeOut();
-
-    $('#page-loader').fadeIn();
-
-    $('#page-loader iframe').attr(
-        'src',
-        url
-    );
-
-    $('#page-loader iframe')[0].focus();
-
-    currentMenu =
-        $('#page-loader');
 }
 
 
-/* ============================================================
+/* =========================================================
    PREFERENCES
-   ============================================================ */
+   ========================================================= */
 
 const preferencesDefaults = {
     cloak: true,
@@ -1462,7 +1552,8 @@ const preferencesDefaults = {
 
     mask: true,
 
-    maskTitle: 'Home',
+    maskTitle:
+        'Home',
 
     maskIconUrl:
         'https://ssl.gstatic.com/classroom/ic_product_classroom_32.png',
@@ -1543,33 +1634,45 @@ backgroundCheckbox.checked =
     preferences.background;
 
 
-/* ============================================================
+/* =========================================================
    PRESETS
-   ============================================================ */
+   ========================================================= */
 
 const presets = {
     classroom: {
-        url: 'https://classroom.google.com/',
-        title: 'Home',
-        icon: 'https://ssl.gstatic.com/classroom/ic_product_classroom_32.png'
+        url:
+            'https://classroom.google.com/',
+        title:
+            'Home',
+        icon:
+            'https://ssl.gstatic.com/classroom/ic_product_classroom_32.png'
     },
 
     drive: {
-        url: 'https://drive.google.com/',
-        title: 'My Drive - Google Drive',
-        icon: 'https://ssl.gstatic.com/images/branding/product/2x/hh_drive_36dp.png'
+        url:
+            'https://drive.google.com/',
+        title:
+            'My Drive - Google Drive',
+        icon:
+            'https://ssl.gstatic.com/images/branding/product/2x/hh_drive_36dp.png'
     },
 
     mail: {
-        url: 'https://mail.google.com/',
-        title: 'Inbox (12) - Google Mail',
-        icon: 'https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_512dp.png'
+        url:
+            'https://mail.google.com/',
+        title:
+            'Inbox (12) - Google Mail',
+        icon:
+            'https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_512dp.png'
     },
 
     canvas: {
-        url: 'https://www.instructure.com/',
-        title: 'Dashboard',
-        icon: 'https://du11hjcvx0uqb.cloudfront.net/dist/images/favicon-e10d657a73.ico'
+        url:
+            'https://www.instructure.com/',
+        title:
+            'Dashboard',
+        icon:
+            'https://du11hjcvx0uqb.cloudfront.net/dist/images/favicon-e10d657a73.ico'
     }
 };
 
@@ -1608,14 +1711,14 @@ function updatePreset() {
 }
 
 
-/* ============================================================
-   CLOAK
-   ============================================================ */
+/* =========================================================
+   CLOAK STARTUP
+   ========================================================= */
 
 if (
     preferences.cloak &&
     window.location.href ==
-        window.top.location.href
+    window.top.location.href
 ) {
     if (popupsAllowed()) {
         makecloak();
@@ -1623,9 +1726,8 @@ if (
         currentMenu.fadeOut(
             300,
             () => {
-                $('.cloaklaunch').fadeIn(
-                    200
-                );
+                $('.cloaklaunch')
+                    .fadeIn(200);
             }
         );
 
@@ -1639,9 +1741,8 @@ if (
                     event.target.id ==
                     'disableCloak'
                 ) {
-                    $('.cloaklaunch').fadeOut(
-                        200
-                    );
+                    $('.cloaklaunch')
+                        .fadeOut(200);
 
                     setTimeout(
                         returnHome,
@@ -1669,9 +1770,9 @@ if (
 }
 
 
-/* ============================================================
-   PREFERENCE EVENTS
-   ============================================================ */
+/* =========================================================
+   SETTINGS EVENTS
+   ========================================================= */
 
 maskCheckbox.addEventListener(
     'change',
@@ -1724,14 +1825,12 @@ backgroundCheckbox.addEventListener(
 );
 
 
-/* ============================================================
+/* =========================================================
    CLOAK URL
-   ============================================================ */
+   ========================================================= */
 
 document
-    .getElementById(
-        'cloakUrlSubmit'
-    )
+    .getElementById('cloakUrlSubmit')
     .addEventListener(
         'click',
         function () {
@@ -1752,14 +1851,12 @@ document
     );
 
 
-/* ============================================================
+/* =========================================================
    MASK TITLE
-   ============================================================ */
+   ========================================================= */
 
 document
-    .getElementById(
-        'maskTitleSubmit'
-    )
+    .getElementById('maskTitleSubmit')
     .addEventListener(
         'click',
         function () {
@@ -1780,14 +1877,12 @@ document
     );
 
 
-/* ============================================================
+/* =========================================================
    MASK ICON
-   ============================================================ */
+   ========================================================= */
 
 document
-    .getElementById(
-        'maskIconSubmit'
-    )
+    .getElementById('maskIconSubmit')
     .addEventListener(
         'click',
         function () {
@@ -1808,14 +1903,12 @@ document
     );
 
 
-/* ============================================================
-   SAVE BUTTONS
-   ============================================================ */
+/* =========================================================
+   DOWNLOAD / UPLOAD
+   ========================================================= */
 
 document
-    .getElementById(
-        'download'
-    )
+    .getElementById('download')
     .addEventListener(
         'click',
         function () {
@@ -1825,9 +1918,7 @@ document
 
 
 document
-    .getElementById(
-        'upload'
-    )
+    .getElementById('upload')
     .addEventListener(
         'click',
         function () {
@@ -1836,9 +1927,9 @@ document
     );
 
 
-/* ============================================================
-   MASK
-   ============================================================ */
+/* =========================================================
+   MASK STARTUP
+   ========================================================= */
 
 if (preferences.mask) {
     mask();
