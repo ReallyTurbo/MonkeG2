@@ -31,7 +31,6 @@ $(document).on('click', '#gamesList li', function (event) {
 
    
     openGameInNewTab(gameUrl);
-    window.location.href = '/games';
     return false;
 });
 
@@ -131,13 +130,8 @@ function fixGameUrl(url) {
 /*
  * Opens the game in a NEW TAB.
  *
- * Example:
- *
- * /games/2048
- *
- * becomes:
- *
- * https://monkegg2.onrender.com/games/2048/
+ * At the same time, the CURRENT tab switches
+ * to the Games page.
  */
 
 function openGameInNewTab(gameUrl) {
@@ -152,11 +146,10 @@ function openGameInNewTab(gameUrl) {
 
     try {
 
-        fullUrl =
-            new URL(
-                gameUrl,
-                window.location.origin
-            ).href;
+        fullUrl = new URL(
+            gameUrl,
+            window.location.origin
+        ).href;
 
     } catch (error) {
 
@@ -169,73 +162,29 @@ function openGameInNewTab(gameUrl) {
         return;
     }
 
-
     console.log(
         'Opening game:',
         fullUrl
     );
 
-
     /*
-     * Open in a completely new tab.
-     *
-     * The current MonkeyGG2 page remains open.
+     * Open the actual game in a NEW TAB.
      */
-
-    const newTab =
-        window.open(
-            fullUrl,
-            '_blank'
-        );
-
-
-    /*
-     * If popup blocking prevents the tab from opening,
-     * provide a fallback.
-     */
-
-    if (!newTab) {
-
-        alert(
-            'Your browser blocked the new game tab. Please allow popups for this site.'
-        );
-
-    } else {
-
-        try {
-            newTab.opener = null;
-        } catch (error) {
-            // Ignore
-        }
-
-    }
-}
-
-    console.log(
-        'Opening game:',
-        fullUrl
+    const newTab = window.open(
+        fullUrl,
+        '_blank'
     );
 
-
     /*
-     * Open in a completely new tab.
+     * Switch the CURRENT tab to /games.
      *
-     * The current MonkeyGG2 page remains open.
+     * This happens independently of the new tab.
      */
-
-    const newTab =
-        window.open(
-            fullUrl,
-            '_blank'
-        );
-
     window.location.href = '/games';
 
     /*
-     * If popup blocking prevents the tab from opening,
-     * provide a fallback.
+     * Popup blocker fallback.
      */
-
     if (!newTab) {
 
         alert(
@@ -249,7 +198,6 @@ function openGameInNewTab(gameUrl) {
         } catch (error) {
             // Ignore
         }
-
     }
 }
 
