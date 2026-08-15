@@ -52,9 +52,6 @@ function onInput(selector, callback) {
  * becomes:
  *
  * /games/2048/
- *
- * This is important because the game files may use
- * relative paths.
  */
 
 function fixGameUrl(url) {
@@ -65,23 +62,17 @@ function fixGameUrl(url) {
 
     url = String(url).trim();
 
-    /*
-     * Remove accidental whitespace/full-width spaces.
-     */
     url = url.replace(/\u3000/g, '');
 
     /*
      * Absolute URLs
      */
+
     if (
         url.startsWith('http://') ||
         url.startsWith('https://')
     ) {
 
-        /*
-         * If this is one of our /games/ URLs,
-         * make sure it ends in /
-         */
         try {
 
             const parsed = new URL(url);
@@ -107,6 +98,7 @@ function fixGameUrl(url) {
             return parsed.toString();
 
         } catch (error) {
+
             return url;
         }
     }
@@ -118,13 +110,10 @@ function fixGameUrl(url) {
 
     if (url.startsWith('/games/')) {
 
-        /*
-         * Don't modify actual files such as:
-         *
-         * /games/game/index.html
-         */
         const lastPart =
-            url.substring(url.lastIndexOf('/') + 1);
+            url.substring(
+                url.lastIndexOf('/') + 1
+            );
 
         if (
             !lastPart.includes('.') &&
@@ -143,27 +132,19 @@ function fixGameUrl(url) {
    OPEN GAME
    ========================================================= */
 
-/*
- * Opens the game in a NEW TAB.
- *
- * Example:
- *
- * /games/2048
- *
- * becomes:
- *
- * https://monkegg2.onrender.com/games/2048/
- */
-
 function openGameInNewTab(gameUrl) {
 
     if (!gameUrl) {
         return;
     }
 
-    gameUrl = fixGameUrl(gameUrl);
+
+    gameUrl =
+        fixGameUrl(gameUrl);
+
 
     let fullUrl;
+
 
     try {
 
@@ -187,15 +168,14 @@ function openGameInNewTab(gameUrl) {
 
     /*
      * Make absolutely sure local game directories
-     * end with / before opening them.
+     * have a trailing slash.
      */
 
     try {
 
         const parsed =
-            new URL(
-                fullUrl
-            );
+            new URL(fullUrl);
+
 
         if (
             parsed.pathname.startsWith('/games/') &&
@@ -211,6 +191,7 @@ function openGameInNewTab(gameUrl) {
                 parsed.pathname += '/';
             }
         }
+
 
         fullUrl =
             parsed.href;
@@ -231,9 +212,7 @@ function openGameInNewTab(gameUrl) {
 
 
     /*
-     * Open in a completely new tab.
-     *
-     * The current MonkeyGG2 page remains open.
+     * Open the actual game in a NEW TAB.
      */
 
     const newTab =
@@ -243,25 +222,9 @@ function openGameInNewTab(gameUrl) {
         );
 
 
-
-
-   
-
-
-
-   
-   document.addEventListener(
-    'DOMContentLoaded',
-    openGamesMenuOnStartup,
-    {
-        once: true
-    }
-);
-
-
     /*
      * If popup blocking prevents the tab from opening,
-     * provide a fallback.
+     * don't change the current page.
      */
 
     if (!newTab) {
@@ -270,32 +233,45 @@ function openGameInNewTab(gameUrl) {
             'Your browser blocked the new game tab. Please allow popups for this site.'
         );
 
-    } else {
-
-        try {
-
-            newTab.opener =
-                null;
-
-        } catch (error) {
-
-            // Ignore
-        }
+        return;
     }
+
+
+    /*
+     * Prevent the new tab from controlling the
+     * original MonkeyGG2 tab.
+     */
+
+    try {
+
+        newTab.opener =
+            null;
+
+    } catch (error) {
+
+        // Ignore
+    }
+
+
+    /*
+     * IMPORTANT:
+     *
+     * The ORIGINAL tab now switches back to the
+     * Games menu.
+     *
+     * This does NOT change the URL.
+     *
+     * It simply hides whatever menu was open and
+     * displays .games again.
+     */
+
+    openGamesMenuOnStartup();
 }
 
 
 /* =========================================================
    GAME LIST CLICK
    ========================================================= */
-
-/*
- * IMPORTANT:
- *
- * Only ONE game click listener is used.
- *
- * This fixes the old duplicate listener problem.
- */
 
 $(document).on(
     'click',
@@ -428,13 +404,11 @@ function jaro_distance(s1, s2) {
 
 
     const hashS1 =
-        new Array(len1)
-            .fill(0);
+        new Array(len1).fill(0);
 
 
     const hashS2 =
-        new Array(len2)
-            .fill(0);
+        new Array(len2).fill(0);
 
 
     for (
@@ -463,7 +437,6 @@ function jaro_distance(s1, s2) {
             ) {
 
                 hashS1[i] = 1;
-
                 hashS2[j] = 1;
 
                 match++;
@@ -483,7 +456,6 @@ function jaro_distance(s1, s2) {
 
 
     let t = 0;
-
     let point = 0;
 
 
@@ -704,10 +676,6 @@ function updateList() {
                 );
 
 
-            /*
-             * Empty search = show everything
-             */
-
             if (
                 filter === ''
             ) {
@@ -726,13 +694,11 @@ function updateList() {
             ) {
 
                 const aliasList =
-                    aliases
-                        .split(',');
+                    aliases.split(',');
 
 
                 for (
-                    const alias of
-                    aliasList
+                    const alias of aliasList
                 ) {
 
                     const cleanAlias =
@@ -748,7 +714,6 @@ function updateList() {
                     ) {
 
                         visible = true;
-
                         break;
                     }
 
@@ -762,7 +727,6 @@ function updateList() {
                     ) {
 
                         visible = true;
-
                         break;
                     }
                 }
@@ -947,8 +911,7 @@ document.addEventListener(
 
 
         for (
-            const sequence of
-            sequences
+            const sequence of sequences
         ) {
 
             if (
@@ -1132,8 +1095,7 @@ function snow() {
 
 
         for (
-            const flake of
-            snowflakes
+            const flake of snowflakes
         ) {
 
             flake.y +=
@@ -2196,6 +2158,9 @@ actions.forEach(
    KEY BINDING
    ========================================================= */
 
+const pressedKeys = {};
+
+
 keySlots.forEach(
     function (slot) {
 
@@ -2205,11 +2170,6 @@ keySlots.forEach(
 
                 slot.textContent =
                     'Press any key';
-
-
-                const originalText =
-                    slot.dataset.originalText ||
-                    '';
 
 
                 function keyPressHandler(
@@ -2290,9 +2250,6 @@ keySlots.forEach(
    CUSTOM KEY ACTIONS
    ========================================================= */
 
-const pressedKeys = {};
-
-
 function onKeyRelease(
     event
 ) {
@@ -2309,11 +2266,6 @@ function onKeyRelease(
 function onKeyPress(
     event
 ) {
-
-    /*
-     * Don't trigger custom actions while
-     * typing into an input.
-     */
 
     const target =
         event.target;
@@ -2447,10 +2399,6 @@ const defaultColorSettings = {
     'button-color':
         '#373737',
 
-    /*
-     * The CSS variable can still use transparency.
-     * The HTML color input itself should use #373737.
-     */
     'games-color':
         '#373737a6',
 
@@ -2513,9 +2461,6 @@ Object.entries(
 
 /*
  * Put colors into color inputs.
- *
- * Alpha colors are converted to their
- * 6-digit equivalent for the input.
  */
 
 Object.keys(
@@ -2541,10 +2486,6 @@ Object.keys(
             colorSettings[key];
 
 
-        /*
-         * Convert #RRGGBBAA -> #RRGGBB.
-         */
-
         if (
             /^#[0-9a-fA-F]{8}$/.test(
                 value
@@ -2558,10 +2499,6 @@ Object.keys(
                 );
         }
 
-
-        /*
-         * Convert #RGB -> #RRGGBB.
-         */
 
         if (
             /^#[0-9a-fA-F]{3}$/.test(
@@ -2620,10 +2557,6 @@ function saveColorChanges() {
                 return;
             }
 
-
-            /*
-             * Preserve transparency for games-color.
-             */
 
             if (
                 input.id ===
@@ -3351,7 +3284,6 @@ if (
         function () {
 
             updateList();
-
         }
     );
 
@@ -3364,15 +3296,6 @@ if (
 /* =========================================================
    CLOAK STARTUP
    ========================================================= */
-
-/*
- * IMPORTANT:
- *
- * Cloak is OFF by default.
- *
- * This section will ONLY run if the user
- * explicitly enables cloak in settings.
- */
 
 if (
     preferences.cloak &&
@@ -3460,7 +3383,6 @@ if (
 
                 event.preventDefault();
 
-
                 makecloak();
             }
         );
@@ -3483,15 +3405,6 @@ if (
 /* =========================================================
    AUTOMATICALLY OPEN GAMES MENU
    ========================================================= */
-
-/*
- * The site uses a single-page menu system.
- *
- * This does NOT navigate to /games/.
- * It simply changes which section is visible.
- *
- * The browser URL remains unchanged.
- */
 
 function openGamesMenuOnStartup() {
 
@@ -3539,7 +3452,7 @@ function openGamesMenuOnStartup() {
 
 
     /*
-     * Make sure the main content is visible.
+     * Make main content visible.
      */
 
     if (
@@ -3552,23 +3465,13 @@ function openGamesMenuOnStartup() {
 
 
     /*
-     * Do not force the Games container to
-     * "block" because that can destroy the
-     * existing CSS centering/flex layout.
-     *
-     * Instead, clear any inline display value
-     * and let the stylesheet control its layout.
+     * Let the existing CSS control the
+     * display layout where possible.
      */
 
     games.style.display =
         '';
 
-
-    /*
-     * If the stylesheet originally hides it,
-     * remember that hidden state and use flex
-     * for the actual Games container.
-     */
 
     const computedDisplay =
         window.getComputedStyle(
@@ -3587,40 +3490,42 @@ function openGamesMenuOnStartup() {
 
 
     /*
-     * Keep the Games page centered.
+     * Keep Games content centered.
      */
 
     games.style.flexDirection =
         'column';
 
+
     games.style.alignItems =
         'center';
+
 
     games.style.justifyContent =
         'flex-start';
 
+
     games.style.width =
         '100%';
+
 
     games.style.boxSizing =
         'border-box';
 
 
     /*
-     * Center the game list itself.
+     * Center the games list.
      */
 
-    if (
+    const gamesList =
         document.getElementById(
             'gamesList'
-        )
+        );
+
+
+    if (
+        gamesList
     ) {
-
-        const gamesList =
-            document.getElementById(
-                'gamesList'
-            );
-
 
         gamesList.style.marginLeft =
             'auto';
@@ -3636,7 +3541,7 @@ function openGamesMenuOnStartup() {
 
 
     /*
-     * Make sure the search bar stays centered.
+     * Center the search bar.
      */
 
     const searchbar =
@@ -3670,14 +3575,14 @@ function openGamesMenuOnStartup() {
 
 
     console.log(
-        'Games menu opened automatically.'
+        'Games menu opened.'
     );
 }
 
 
-/*
- * Run only after the DOM is ready.
- */
+/* =========================================================
+   START GAMES MENU WHEN PAGE LOADS
+   ========================================================= */
 
 if (
     document.readyState ===
