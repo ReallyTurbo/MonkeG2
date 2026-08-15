@@ -1,9 +1,25 @@
+/* =========================================================
+   MAIN MENU
+   ========================================================= */
+
 let currentMenu = $('.homepage');
 
 
 /* =========================================================
    GAME URL HANDLING
    ========================================================= */
+
+/*
+ * IMPORTANT:
+ *
+ * /games/2048
+ *
+ * becomes:
+ *
+ * /games/2048/
+ *
+ * BEFORE the URL is opened or placed inside an iframe.
+ */
 
 function fixGameUrl(url) {
     if (!url) {
@@ -12,51 +28,32 @@ function fixGameUrl(url) {
 
     url = String(url).trim();
 
-    /*
-     * Convert:
-     *
-     * /games/basket-random
-     *
-     * into:
-     *
-     * /games/basket-random/
-     *
-     * This is important for Render because the game files
-     * are served from the directory URL.
-     */
-
-    if (
-        url.startsWith('/games/') &&
-        !url.endsWith('/') &&
-        !url.includes('.html')
-    ) {
-        url += '/';
-    }
-
-    return url;
-}
-
-
-function getFullGameUrl(gameUrl) {
-    gameUrl = fixGameUrl(gameUrl);
-
-    if (!gameUrl) {
-        return null;
-    }
-
     try {
-        return new URL(
-            gameUrl,
+        const parsed = new URL(
+            url,
             window.location.origin
-        ).href;
+        );
+
+        /*
+         * Only add the slash to game folder URLs.
+         */
+        if (
+            parsed.pathname.startsWith('/games/') &&
+            !parsed.pathname.endsWith('/')
+        ) {
+            parsed.pathname += '/';
+        }
+
+        return parsed.href;
+
     } catch (error) {
         console.error(
-            'Invalid game URL:',
-            gameUrl,
+            'Could not fix game URL:',
+            url,
             error
         );
 
-        return null;
+        return url;
     }
 }
 
@@ -66,28 +63,39 @@ function getFullGameUrl(gameUrl) {
    ========================================================= */
 
 function openGameInNewTab(gameUrl) {
-    const fullUrl =
-        getFullGameUrl(gameUrl);
-
-    if (!fullUrl) {
+    if (!gameUrl) {
+        console.error('Game URL is missing.');
         return;
     }
 
+    const fixedUrl =
+        fixGameUrl(gameUrl);
+
     console.log(
         'Opening game:',
-        fullUrl
+        fixedUrl
     );
 
     window.open(
-        fullUrl,
+        fixedUrl,
         '_blank'
     );
 }
 
 
 /* =========================================================
-   GAME LIST
+   GAME LIST CLICK
    ========================================================= */
+
+/*
+ * Example:
+ *
+ * <li url="/games/2048">2048</li>
+ *
+ * becomes:
+ *
+ * https://monkegg2.onrender.com/games/2048/
+ */
 
 $(document).on(
     'click',
@@ -99,29 +107,29 @@ $(document).on(
         const gameUrl =
             this.getAttribute('url');
 
-        const fullUrl =
-            getFullGameUrl(gameUrl);
-
-        if (!fullUrl) {
+        if (!gameUrl) {
             console.error(
-                'Game has no URL:',
+                'Game is missing its url attribute:',
                 this
             );
 
             return;
         }
 
-        openGameInNewTab(fullUrl);
+        openGameInNewTab(
+            gameUrl
+        );
     }
 );
 
 
 /* =========================================================
-   MENU BUTTONS
+   GAME CARD / MENU BUTTONS
    ========================================================= */
 
-$('.column button .card').on(
+$(document).on(
     'click',
+    '.column button .card',
     function () {
 
         const nextMenu =
@@ -131,45 +139,52 @@ $('.column button .card').on(
             return;
         }
 
-
-        /* =========================
-           PROXY
-           ========================= */
-
         if (nextMenu === 'proxy') {
 
             if (
                 typeof config !== 'undefined' &&
                 !config['proxy']
             ) {
-                $('#disabled').showModal();
+
+                const disabled =
+                    $('#disabled')[0];
+
+                if (
+                    disabled &&
+                    typeof disabled.showModal === 'function'
+                ) {
+                    disabled.showModal();
+                }
+
                 return;
             }
 
-            currentMenu.fadeOut(
+            $('#everything-else').fadeOut(
                 300,
                 function () {
 
-                    $('#page-loader').fadeIn(200);
+                    $('#page-loader').fadeIn(
+                        200
+                    );
 
-                    const proxyPath =
-                        (
-                            typeof config !== 'undefined' &&
-                            config['proxyPath']
-                        )
-                            ? config['proxyPath']
-                            : '/proxy';
+                    let proxyPath =
+                        '/proxy';
 
-                    $('#page-loader iframe')
-                        .attr(
-                            'src',
-                            proxyPath
-                        );
+                    if (
+                        typeof config !== 'undefined' &&
+                        config['proxyPath']
+                    ) {
+                        proxyPath =
+                            config['proxyPath'];
+                    }
 
                     const iframe =
                         $('#page-loader iframe')[0];
 
                     if (iframe) {
+                        iframe.src =
+                            proxyPath;
+
                         iframe.focus();
                     }
                 }
@@ -188,38 +203,23 @@ $('.column button .card').on(
             return;
         }
 
-
-        /* =========================
-           NORMAL MENU
-           ========================= */
-
-        const nextMenuElement =
-            $('.' + nextMenu);
-
-        if (!nextMenuElement.length) {
-            console.warn(
-                'Menu not found:',
-                nextMenu
-            );
-
-            return;
-        }
-
         currentMenu.fadeOut(
             300,
             function () {
-                nextMenuElement.fadeIn(200);
+
+                $('.' + nextMenu)
+                    .fadeIn(200);
             }
         );
 
         currentMenu =
-            nextMenuElement;
+            $('.' + nextMenu);
     }
 );
 
 
 /* =========================================================
-   HOME / REFRESH BUTTONS
+   GENERAL BUTTONS
    ========================================================= */
 
 $('logo img').on(
@@ -227,30 +227,14 @@ $('logo img').on(
     returnHome
 );
 
-
 $('#gameButton').on(
     'click',
-    function () {
-
-        if (window.hold) {
-            return;
-        }
-
-        returnHome();
-    }
+    returnHome
 );
-
 
 $('#refresh').on(
     'click',
-    function () {
-
-        if (window.hold) {
-            return;
-        }
-
-        refreshPage();
-    }
+    refreshPage
 );
 
 
@@ -266,9 +250,15 @@ $('dialog').on(
             event.target;
 
         if (
-            target === this
+            target &&
+            !target.closest('div')
         ) {
-            this.close();
+
+            if (
+                typeof target.close === 'function'
+            ) {
+                target.close();
+            }
         }
     }
 );
@@ -278,14 +268,20 @@ $('dialog').on(
    JARO SIMILARITY
    ========================================================= */
 
-function jaro_distance(s1, s2) {
+function jaro_distance(
+    s1,
+    s2
+) {
 
     if (s1 === s2) {
         return 1.0;
     }
 
-    const len1 = s1.length;
-    const len2 = s2.length;
+    const len1 =
+        s1.length;
+
+    const len2 =
+        s2.length;
 
     if (
         len1 === 0 ||
@@ -295,12 +291,12 @@ function jaro_distance(s1, s2) {
     }
 
     const max_dist =
-        Math.max(
-            Math.floor(
-                Math.max(len1, len2) / 2
-            ) - 1,
-            0
-        );
+        Math.floor(
+            Math.max(
+                len1,
+                len2
+            ) / 2
+        ) - 1;
 
     let match = 0;
 
@@ -309,7 +305,6 @@ function jaro_distance(s1, s2) {
 
     const hash_s2 =
         new Array(len2).fill(0);
-
 
     for (
         let i = 0;
@@ -325,10 +320,10 @@ function jaro_distance(s1, s2) {
                 );
 
             j <
-            Math.min(
-                len2,
-                i + max_dist + 1
-            );
+                Math.min(
+                    len2,
+                    i + max_dist + 1
+                );
 
             j++
         ) {
@@ -348,15 +343,12 @@ function jaro_distance(s1, s2) {
         }
     }
 
-
     if (match === 0) {
         return 0.0;
     }
 
-
     let t = 0;
     let point = 0;
-
 
     for (
         let i = 0;
@@ -375,17 +367,16 @@ function jaro_distance(s1, s2) {
             }
 
             if (
-                s1[i] !==
-                s2[point++]
+                s1[i] !== s2[point]
             ) {
                 t++;
             }
+
+            point++;
         }
     }
 
-
     t /= 2;
-
 
     return (
         match / len1 +
@@ -409,13 +400,11 @@ function jaroWinklerSimilarity(
     let result =
         jaro_dist;
 
-
     if (
         jaro_dist > 0.7
     ) {
 
         let prefix = 0;
-
 
         for (
             let i = 0;
@@ -424,13 +413,11 @@ function jaroWinklerSimilarity(
                 s1.length,
                 s2.length
             );
-
             i++
         ) {
 
             if (
-                s1[i] ===
-                s2[i]
+                s1[i] === s2[i]
             ) {
                 prefix++;
             } else {
@@ -438,20 +425,17 @@ function jaroWinklerSimilarity(
             }
         }
 
-
         prefix =
             Math.min(
                 4,
                 prefix
             );
 
-
         result +=
             0.1 *
             prefix *
             (1 - result);
     }
-
 
     return Number(
         result.toFixed(6)
@@ -460,7 +444,7 @@ function jaroWinklerSimilarity(
 
 
 /* =========================================================
-   GAME LIST UPDATE
+   GAME LIST
    ========================================================= */
 
 function updateList() {
@@ -468,28 +452,21 @@ function updateList() {
     const searchElement =
         $('#search');
 
-    const sortElement =
-        $('#sort');
+    const filter =
+        searchElement.length
+            ? String(
+                searchElement.val() || ''
+              ).toLowerCase()
+            : '';
 
     const gamesList =
         document.getElementById(
             'gamesList'
         );
 
-
     if (!gamesList) {
         return;
     }
-
-
-    const filter =
-        (
-            searchElement.val() ||
-            ''
-        )
-            .toString()
-            .toLowerCase();
-
 
     const elems =
         Array.from(
@@ -498,80 +475,18 @@ function updateList() {
             )
         );
 
+    const sortElement =
+        $('#sort');
 
     const sortType =
-        sortElement.val();
+        sortElement.length
+            ? sortElement.val()
+            : 'default';
 
 
-    /* =========================
-       FILTER
-       ========================= */
-
-    elems.forEach(
-        function (item) {
-
-            const text =
-                item.textContent
-                    .toLowerCase();
-
-
-            let similarity =
-                jaroWinklerSimilarity(
-                    filter,
-                    text
-                );
-
-
-            const aliases =
-                item.getAttribute(
-                    'aliases'
-                );
-
-
-            if (aliases) {
-
-                aliases
-                    .split(',')
-                    .forEach(
-                        function (alias) {
-
-                            alias =
-                                alias
-                                    .trim()
-                                    .toLowerCase();
-
-                            if (
-                                alias.length > 0
-                            ) {
-
-                                similarity +=
-                                    jaroWinklerSimilarity(
-                                        filter,
-                                        alias
-                                    );
-                            }
-                        }
-                    );
-            }
-
-
-            const matches =
-                filter === '' ||
-                text.includes(filter) ||
-                similarity >= 0.7;
-
-
-            item.style.display =
-                matches
-                    ? ''
-                    : 'none';
-        }
-    );
-
-
-    /* =========================
+    /* -----------------------------------------------------
        SORT
-       ========================= */
+       ----------------------------------------------------- */
 
     elems.sort(
         function (a, b) {
@@ -587,7 +502,6 @@ function updateList() {
                     );
             }
 
-
             if (
                 sortType ===
                 'reverse'
@@ -599,11 +513,161 @@ function updateList() {
                     );
             }
 
-
             return 0;
         }
     );
 
+
+    /* -----------------------------------------------------
+       FILTER
+       ----------------------------------------------------- */
+
+    elems.forEach(
+        function (item) {
+
+            const text =
+                item.textContent
+                    .toLowerCase();
+
+            let similarity = 0;
+
+            if (filter.length > 0) {
+
+                similarity =
+                    jaroWinklerSimilarity(
+                        filter,
+                        text
+                    );
+
+                const aliases =
+                    item.getAttribute(
+                        'aliases'
+                    );
+
+                if (aliases) {
+
+                    aliases
+                        .split(',')
+                        .forEach(
+                            function (alias) {
+
+                                alias =
+                                    alias
+                                        .trim()
+                                        .toLowerCase();
+
+                                if (
+                                    alias.length > 0
+                                ) {
+
+                                    similarity +=
+                                        jaroWinklerSimilarity(
+                                            filter,
+                                            alias
+                                        );
+                                }
+                            }
+                        );
+                }
+            }
+
+
+            const matches =
+                filter.length === 0 ||
+                text.includes(filter) ||
+                similarity >= 0.7;
+
+
+            item.style.display =
+                matches
+                    ? ''
+                    : 'none';
+        }
+    );
+
+
+    /* -----------------------------------------------------
+       SEARCH RELEVANCE
+       ----------------------------------------------------- */
+
+    if (
+        filter.length > 0
+    ) {
+
+        elems.sort(
+            function (a, b) {
+
+                let distanceA =
+                    jaroWinklerSimilarity(
+                        filter,
+                        a.textContent
+                            .toLowerCase()
+                    );
+
+                let distanceB =
+                    jaroWinklerSimilarity(
+                        filter,
+                        b.textContent
+                            .toLowerCase()
+                    );
+
+
+                const aliasesA =
+                    a.getAttribute(
+                        'aliases'
+                    );
+
+                if (aliasesA) {
+
+                    aliasesA
+                        .split(',')
+                        .forEach(
+                            function (alias) {
+
+                                distanceA +=
+                                    jaroWinklerSimilarity(
+                                        filter,
+                                        alias
+                                            .trim()
+                                            .toLowerCase()
+                                    );
+                            }
+                        );
+                }
+
+
+                const aliasesB =
+                    b.getAttribute(
+                        'aliases'
+                    );
+
+                if (aliasesB) {
+
+                    aliasesB
+                        .split(',')
+                        .forEach(
+                            function (alias) {
+
+                                distanceB +=
+                                    jaroWinklerSimilarity(
+                                        filter,
+                                        alias
+                                            .trim()
+                                            .toLowerCase()
+                                    );
+                            }
+                        );
+                }
+
+                return distanceB - distanceA;
+            }
+        );
+    }
+
+
+    /* -----------------------------------------------------
+       PUT ITEMS BACK
+       ----------------------------------------------------- */
 
     elems.forEach(
         function (item) {
@@ -626,7 +690,6 @@ $('#search').on(
     updateList
 );
 
-
 $('#sort').on(
     'change',
     updateList
@@ -637,30 +700,17 @@ $('#sort').on(
    DRAG BUTTONS
    ========================================================= */
 
-if (
+dragElement(
     document.getElementById(
         'gameButton'
     )
-) {
-    dragElement(
-        document.getElementById(
-            'gameButton'
-        )
-    );
-}
+);
 
-
-if (
+dragElement(
     document.getElementById(
         'refresh'
     )
-) {
-    dragElement(
-        document.getElementById(
-            'refresh'
-        )
-    );
-}
+);
 
 
 /* =========================================================
@@ -684,12 +734,11 @@ const sequences = [
             'Enter'
         ],
 
-        action:
-            function () {
-                alert(
-                    'No easter egg here'
-                );
-            }
+        action: function () {
+            alert(
+                'No easter egg here'
+            );
+        }
     },
 
     {
@@ -721,10 +770,8 @@ document.addEventListener(
 
         let matched = false;
 
-
         for (
-            const sequence
-            of sequences
+            const sequence of sequences
         ) {
 
             if (
@@ -738,7 +785,6 @@ document.addEventListener(
 
                 sequenceIndex++;
 
-
                 if (
                     sequenceIndex ===
                     sequence.keys.length
@@ -749,7 +795,11 @@ document.addEventListener(
                     sequenceIndex = 0;
                 }
 
-            } else if (
+                break;
+            }
+
+
+            if (
                 event.code ===
                 sequence.keys[0]
             ) {
@@ -757,6 +807,8 @@ document.addEventListener(
                 matched = true;
 
                 sequenceIndex = 1;
+
+                break;
             }
         }
 
@@ -774,270 +826,17 @@ document.addEventListener(
 
 function snow() {
 
-    const h = Math;
-    const r = h.random;
-    const a = document;
-    const o = Date.now;
+    const h =
+        Math;
 
+    const r =
+        h.random;
 
-    function Snowflake() {
+    const a =
+        document;
 
-        this.D =
-            function () {
-
-                const t =
-                    h.atan(
-                        this.i /
-                        this.d
-                    );
-
-
-                l.save();
-
-                l.translate(
-                    this.b,
-                    this.a
-                );
-
-                l.rotate(
-                    -t
-                );
-
-                l.scale(
-                    this.e,
-                    this.e *
-                    h.max(
-                        1,
-                        h.pow(
-                            this.j,
-                            0.7
-                        ) / 15
-                    )
-                );
-
-
-                l.drawImage(
-                    m,
-                    -v / 2,
-                    -v / 2
-                );
-
-
-                l.restore();
-            };
-    }
-
-
-    function animate() {
-
-        l.clearRect(
-            0,
-            0,
-            canvasWidth,
-            canvasHeight
-        );
-
-
-        requestAnimationFrame(
-            animate
-        );
-
-
-        const delta =
-            0.001 *
-            timer.et;
-
-
-        timer.r();
-
-
-        const time =
-            timer2.et *
-            gravity;
-
-
-        for (
-            let n = 0;
-            n < snowflakes.length;
-            n++
-        ) {
-
-            const flake =
-                snowflakes[n];
-
-
-            flake.i =
-                h.sin(
-                    time +
-                    flake.g
-                ) *
-                flake.h;
-
-
-            flake.j =
-                h.sqrt(
-                    flake.i *
-                    flake.i +
-                    flake.f
-                );
-
-
-            flake.a +=
-                flake.d *
-                delta;
-
-
-            flake.b +=
-                flake.i *
-                delta;
-
-
-            if (
-                flake.a >
-                bottom
-            ) {
-                flake.a = -offset;
-            }
-
-
-            if (
-                flake.b >
-                right
-            ) {
-                flake.b = -offset;
-            }
-
-
-            if (
-                flake.b <
-                -offset
-            ) {
-                flake.b = right;
-            }
-
-
-            flake.D();
-        }
-    }
-
-
-    function resize() {
-
-        canvas.width =
-            canvasWidth =
-            window.innerWidth;
-
-
-        canvas.height =
-            canvasHeight =
-            window.innerHeight;
-
-
-        bottom =
-            canvasHeight +
-            offset;
-
-
-        right =
-            canvasWidth +
-            offset;
-
-
-        resetSnow();
-    }
-
-
-    class Timer {
-
-        constructor(
-            duration,
-            start = true
-        ) {
-
-            this._ts = o();
-            this._p = true;
-            this._pa = o();
-            this.d = duration;
-
-
-            if (start) {
-                this.s();
-            }
-        }
-
-
-        get et() {
-
-            return this.ip
-                ? this._pa -
-                    this._ts
-                : o() -
-                    this._ts;
-        }
-
-
-        get rt() {
-
-            return h.max(
-                0,
-                this.d -
-                this.et
-            );
-        }
-
-
-        get ip() {
-            return this._p;
-        }
-
-
-        get ic() {
-            return (
-                this.et >=
-                this.d
-            );
-        }
-
-
-        s() {
-
-            this._ts =
-                o() -
-                this.et;
-
-            this._p =
-                false;
-
-            return this;
-        }
-
-
-        r() {
-
-            this._pa =
-                this._ts =
-                o();
-
-            return this;
-        }
-
-
-        p() {
-
-            this._p = true;
-            this._pa = o();
-
-            return this;
-        }
-
-
-        st() {
-
-            this._p = true;
-
-            return this;
-        }
-    }
+    const o =
+        Date.now;
 
 
     const canvas =
@@ -1045,81 +844,88 @@ function snow() {
             'canvas'
         );
 
+    const style =
+        canvas.style;
 
-    canvas.style.position =
+    style.position =
         'fixed';
 
-    canvas.style.left =
+    style.left =
         '0';
 
-    canvas.style.top =
+    style.top =
         '0';
 
-    canvas.style.width =
+    style.width =
         '100vw';
 
-    canvas.style.height =
+    style.height =
         '100vh';
 
-    canvas.style.zIndex =
+    style.zIndex =
         '100000';
 
-    canvas.style.pointerEvents =
+    style.pointerEvents =
         'none';
 
 
     a.body.insertBefore(
         canvas,
-        a.body.children[0]
+        a.body.firstChild
     );
 
 
-    const l =
-        canvas.getContext(
-            '2d'
-        );
+    const context =
+        canvas.getContext('2d');
 
 
-    const particleCount = 300;
-    const gravity = 5e-4;
-    const offset = 20;
-    const v = 15.2;
+    const particleCount =
+        300;
 
+    const gravity =
+        5e-4;
 
-    let canvasWidth =
+    const padding =
+        20;
+
+    let width =
         canvas.width =
         window.innerWidth;
 
-
-    let canvasHeight =
+    let height =
         canvas.height =
         window.innerHeight;
 
-
     let bottom =
-        canvasHeight +
-        offset;
-
+        height + padding;
 
     let right =
-        canvasWidth +
-        offset;
+        width + padding;
+
+    const size =
+        15.2;
 
 
-    const m =
+    const snowCanvas =
         a.createElement(
             'canvas'
         );
 
+    snowCanvas.width =
+        size;
 
-    const E =
-        m.getContext(
+    snowCanvas.height =
+        size;
+
+
+    const snowContext =
+        snowCanvas.getContext(
             '2d'
         );
 
 
-    const x =
-        E.createRadialGradient(
+    const gradient =
+        snowContext.createRadialGradient(
             7.6,
             7.6,
             0,
@@ -1129,27 +935,200 @@ function snow() {
         );
 
 
-    x.addColorStop(
+    gradient.addColorStop(
         0,
         'rgba(255,255,255,1)'
     );
 
-
-    x.addColorStop(
+    gradient.addColorStop(
         1,
         'rgba(255,255,255,0)'
     );
 
 
-    E.fillStyle = x;
+    snowContext.fillStyle =
+        gradient;
 
-
-    E.fillRect(
+    snowContext.fillRect(
         0,
         0,
-        v,
-        v
+        size,
+        size
     );
+
+
+    class Timer {
+
+        constructor(
+            duration,
+            running = true
+        ) {
+
+            this._start =
+                o();
+
+            this._paused =
+                !running;
+
+            this._pauseTime =
+                o();
+
+            this.duration =
+                duration;
+
+            if (running) {
+                this.start();
+            }
+        }
+
+
+        get elapsed() {
+
+            return this._paused
+                ? this._pauseTime -
+                    this._start
+                : o() -
+                    this._start;
+        }
+
+
+        get remaining() {
+
+            return h.max(
+                0,
+                this.duration -
+                this.elapsed
+            );
+        }
+
+
+        get paused() {
+            return this._paused;
+        }
+
+
+        start() {
+
+            this._start =
+                o() -
+                this.elapsed;
+
+            this._paused =
+                false;
+
+            return this;
+        }
+
+
+        reset() {
+
+            this._pauseTime =
+                this._start =
+                o();
+
+            return this;
+        }
+
+
+        pause() {
+
+            this._paused =
+                true;
+
+            this._pauseTime =
+                o();
+
+            return this;
+        }
+    }
+
+
+    class SnowParticle {
+
+        draw() {
+
+            const angle =
+                h.atan(
+                    this.xVelocity /
+                    this.speed
+                );
+
+            context.save();
+
+            context.translate(
+                this.x,
+                this.y
+            );
+
+            context.rotate(
+                -angle
+            );
+
+            context.scale(
+                this.scale,
+                this.scale *
+                h.max(
+                    1,
+                    h.pow(
+                        this.velocity,
+                        0.7
+                    ) / 15
+                )
+            );
+
+            context.drawImage(
+                snowCanvas,
+                -size / 2,
+                -size / 2
+            );
+
+            context.restore();
+        }
+    }
+
+
+    const particles = [];
+
+
+    function resetParticles() {
+
+        for (
+            let i = 0;
+            i < particles.length;
+            i++
+        ) {
+
+            particles[i].x =
+                r() *
+                (height + padding);
+
+            particles[i].y =
+                r() *
+                width;
+        }
+    }
+
+
+    function resize() {
+
+        canvas.width =
+            width =
+            window.innerWidth;
+
+        canvas.height =
+            height =
+            window.innerHeight;
+
+        bottom =
+            height +
+            padding;
+
+        right =
+            width +
+            padding;
+
+        resetParticles();
+    }
 
 
     const timer =
@@ -1158,38 +1137,11 @@ function snow() {
             true
         );
 
-
-    const timer2 =
+    const movementTimer =
         new Timer(
             0,
             true
         );
-
-
-    const snowflakes = [];
-
-
-    function resetSnow() {
-
-        for (
-            let e = 0;
-            e < particleCount;
-            e++
-        ) {
-
-            snowflakes[e].a =
-                r() *
-                (
-                    canvasHeight +
-                    offset
-                );
-
-
-            snowflakes[e].b =
-                r() *
-                canvasWidth;
-        }
-    }
 
 
     for (
@@ -1198,82 +1150,159 @@ function snow() {
         j++
     ) {
 
-        const flake =
-            new Snowflake();
+        const particle =
+            new SnowParticle();
 
 
-        flake.a =
+        particle.x =
             r() *
-            (
-                canvasHeight +
-                offset
-            );
+            (height + padding);
 
-
-        flake.b =
+        particle.y =
             r() *
-            canvasWidth;
+            width;
 
-
-        flake.c =
+        particle.scale =
             3 *
             r() +
             0.8;
 
-
-        flake.d =
+        particle.speed =
             0.1 *
             h.pow(
-                flake.c,
+                particle.scale,
                 2.5
             ) *
             50 *
-            (
-                2 * r() + 1
-            );
-
+            (2 * r() + 1);
 
         if (
-            flake.d < 65
+            particle.speed < 65
         ) {
-            flake.d = 65;
+            particle.speed = 65;
         }
 
-
-        flake.e =
-            flake.c /
+        particle.scale =
+            particle.scale /
             7.6;
 
+        particle.velocity =
+            particle.speed *
+            particle.speed;
 
-        flake.f =
-            flake.d *
-            flake.d;
-
-
-        flake.g =
+        particle.phase =
             (
                 r() *
                 h.PI
-            ) /
-            1.3;
+            ) / 1.3;
 
-
-        flake.h =
+        particle.wind =
             15 *
-            flake.c;
+            particle.scale;
 
+        particle.xVelocity = 0;
+        particle.rotation = 0;
 
-        flake.i = 0;
-        flake.j = 0;
-
-
-        snowflakes.push(
-            flake
+        particles.push(
+            particle
         );
     }
 
 
-    resetSnow();
+    resetParticles();
+
+
+    function animate() {
+
+        context.clearRect(
+            0,
+            0,
+            width,
+            height
+        );
+
+        const delta =
+            0.001 *
+            timer.elapsed;
+
+        timer.reset();
+
+        const movement =
+            movementTimer.elapsed *
+            gravity;
+
+
+        for (
+            let n = 0;
+            n < particles.length;
+            n++
+        ) {
+
+            const particle =
+                particles[n];
+
+
+            particle.xVelocity =
+                h.sin(
+                    movement +
+                    particle.phase
+                ) *
+                particle.wind;
+
+
+            particle.velocity =
+                h.sqrt(
+                    particle.xVelocity *
+                    particle.xVelocity +
+                    particle.speed *
+                    particle.speed
+                );
+
+
+            particle.x +=
+                particle.speed *
+                delta;
+
+            particle.y +=
+                particle.xVelocity *
+                delta;
+
+
+            if (
+                particle.x >
+                bottom
+            ) {
+                particle.x =
+                    -padding;
+            }
+
+
+            if (
+                particle.y >
+                right
+            ) {
+                particle.y =
+                    -padding;
+            }
+
+
+            if (
+                particle.y <
+                -padding
+            ) {
+                particle.y =
+                    right;
+            }
+
+
+            particle.draw();
+        }
+
+
+        requestAnimationFrame(
+            animate
+        );
+    }
 
 
     document.addEventListener(
@@ -1283,13 +1312,15 @@ function snow() {
                 resize,
                 100
             );
-        }
+        },
+        false
     );
 
 
     window.addEventListener(
         'resize',
-        resize
+        resize,
+        false
     );
 
 
@@ -1301,9 +1332,11 @@ function snow() {
    DRAG ELEMENT
    ========================================================= */
 
-function dragElement(elmnt) {
+function dragElement(
+    element
+) {
 
-    if (!elmnt) {
+    if (!element) {
         return;
     }
 
@@ -1314,81 +1347,67 @@ function dragElement(elmnt) {
     let pos4 = 0;
 
 
-    elmnt.onmousedown =
+    element.onmousedown =
         dragMouseDown;
 
 
-    function dragMouseDown(e) {
+    function dragMouseDown(
+        event
+    ) {
 
-        e =
-            e ||
+        event =
+            event ||
             window.event;
 
-
-        e.preventDefault();
-
+        event.preventDefault();
 
         pos3 =
-            e.clientX;
+            event.clientX;
 
         pos4 =
-            e.clientY;
+            event.clientY;
 
 
         document.onmouseup =
             closeDragElement;
-
 
         document.onmousemove =
             elementDrag;
     }
 
 
-    function elementDrag(e) {
+    function elementDrag(
+        event
+    ) {
 
-        e =
-            e ||
+        event =
+            event ||
             window.event;
 
-
-        e.preventDefault();
+        event.preventDefault();
 
 
         pos1 =
             pos3 -
-            e.clientX;
-
+            event.clientX;
 
         pos2 =
             pos4 -
-            e.clientY;
+            event.clientY;
 
 
         pos3 =
-            e.clientX;
-
+            event.clientX;
 
         pos4 =
-            e.clientY;
+            event.clientY;
 
 
-        window.click = 1;
-
-
-        elmnt.style.top =
+        element.style.top =
             (
-                elmnt.offsetTop -
+                element.offsetTop -
                 pos2
-            ) +
-            'px';
-
-
-        elmnt.style.left =
-            (
-                elmnt.offsetLeft -
-                pos1
-            ) +
-            'px';
+            ) + 'px';
     }
 
 
@@ -1397,26 +1416,8 @@ function dragElement(elmnt) {
         document.onmouseup =
             null;
 
-
         document.onmousemove =
             null;
-
-
-        if (
-            window.click === 1
-        ) {
-
-            window.hold = true;
-            window.click = 0;
-
-
-            setTimeout(
-                function () {
-                    window.hold = false;
-                },
-                100
-            );
-        }
     }
 }
 
@@ -1465,16 +1466,15 @@ function returnHome() {
 function refreshPage() {
 
     const iframe =
-        $('#page-loader iframe');
+        $('#page-loader iframe')[0];
 
-
-    if (!iframe.length) {
+    if (!iframe) {
         return;
     }
 
 
     const oldUrl =
-        iframe.attr('src');
+        iframe.src;
 
 
     if (!oldUrl) {
@@ -1482,19 +1482,15 @@ function refreshPage() {
     }
 
 
-    iframe.attr(
-        'src',
-        ''
-    );
+    iframe.src =
+        'about:blank';
 
 
     setTimeout(
         function () {
 
-            iframe.attr(
-                'src',
-                fixGameUrl(oldUrl)
-            );
+            iframe.src =
+                fixGameUrl(oldUrl);
 
         },
         10
@@ -1511,7 +1507,8 @@ function makecloak(
 ) {
 
     if (
-        typeof replaceUrl ===
+        !replaceUrl &&
+        typeof preferences !==
         'undefined'
     ) {
 
@@ -1521,71 +1518,73 @@ function makecloak(
 
 
     if (
-        window.top.location.href !==
+        window.top.location.href ===
         'about:blank'
     ) {
-
-        const url =
-            window.location.href;
-
-
-        const win =
-            window.open();
+        return;
+    }
 
 
-        if (
-            !win ||
-            win.closed ||
-            typeof win.closed ===
-            'undefined'
-        ) {
-            return;
-        }
+    const url =
+        window.location.href;
 
 
-        win.document.body.style.margin =
-            '0';
+    const win =
+        window.open();
 
 
-        win.document.body.style.height =
-            '100vh';
+    if (
+        !win ||
+        win.closed ||
+        typeof win.closed ===
+        'undefined'
+    ) {
+
+        return;
+    }
 
 
-        const iframe =
-            win.document.createElement(
-                'iframe'
-            );
+    win.document.body.style.margin =
+        '0';
+
+    win.document.body.style.height =
+        '100vh';
 
 
-        iframe.style.border =
-            'none';
-
-        iframe.style.width =
-            '100%';
-
-        iframe.style.height =
-            '100%';
-
-        iframe.style.margin =
-            '0';
-
-
-        iframe.referrerPolicy =
-            'no-referrer';
-
-
-        iframe.allow =
-            'fullscreen';
-
-
-        iframe.src =
-            url;
-
-
-        win.document.body.appendChild(
-            iframe
+    const iframe =
+        win.document.createElement(
+            'iframe'
         );
 
+
+    iframe.style.border =
+        'none';
+
+    iframe.style.width =
+        '100%';
+
+    iframe.style.height =
+        '100%';
+
+    iframe.style.margin =
+        '0';
+
+    iframe.referrerPolicy =
+        'no-referrer';
+
+    iframe.allow =
+        'fullscreen';
+
+    iframe.src =
+        url;
+
+
+    win.document.body.appendChild(
+        iframe
+    );
+
+
+    if (replaceUrl) {
 
         window.location.replace(
             replaceUrl
@@ -1603,28 +1602,33 @@ function mask(
     iconUrl
 ) {
 
-    title =
-        title ||
-        preferences.maskTitle;
+    if (
+        typeof preferences !==
+        'undefined'
+    ) {
 
+        title =
+            title ||
+            preferences.maskTitle;
 
-    iconUrl =
-        iconUrl ||
-        preferences.maskIconUrl;
+        iconUrl =
+            iconUrl ||
+            preferences.maskIconUrl;
+    }
 
 
     try {
 
-        const e =
+        const doc =
             window.top.document;
 
 
-        e.title =
+        doc.title =
             title;
 
 
         let link =
-            e.querySelector(
+            doc.querySelector(
                 "link[rel*='icon']"
             );
 
@@ -1632,31 +1636,31 @@ function mask(
         if (!link) {
 
             link =
-                e.createElement(
+                doc.createElement(
                     'link'
                 );
 
-            e.head.appendChild(
-                link
-            );
+            link.rel =
+                'shortcut icon';
+
+            doc
+                .getElementsByTagName(
+                    'head'
+                )[0]
+                .appendChild(link);
         }
 
 
         link.type =
             'image/x-icon';
 
-
-        link.rel =
-            'shortcut icon';
-
-
         link.href =
             iconUrl;
 
     } catch (error) {
 
-        console.warn(
-            'Could not update mask:',
+        console.error(
+            'Could not mask page:',
             error
         );
     }
@@ -1673,7 +1677,7 @@ function popupsAllowed() {
         'userConsole';
 
 
-    const popUp =
+    const popup =
         window.open(
             '/popup-page.php',
             windowName,
@@ -1682,16 +1686,16 @@ function popupsAllowed() {
 
 
     if (
-        !popUp ||
-        popUp.closed
+        popup == null ||
+        typeof popup ===
+        'undefined'
     ) {
 
         return false;
     }
 
 
-    popUp.close();
-
+    popup.close();
 
     return true;
 }
@@ -1751,9 +1755,7 @@ function getMainSave() {
 
 
     cookiesSave =
-        btoa(
-            cookiesSave
-        );
+        btoa(cookiesSave);
 
 
     mainSave.cookies =
@@ -1768,11 +1770,17 @@ function getMainSave() {
         );
 
 
-    mainSave =
-        CryptoJS.AES.encrypt(
-            mainSave,
-            'save'
-        ).toString();
+    if (
+        typeof CryptoJS !==
+        'undefined'
+    ) {
+
+        mainSave =
+            CryptoJS.AES.encrypt(
+                mainSave,
+                'save'
+            ).toString();
+    }
 
 
     return mainSave;
@@ -1782,15 +1790,9 @@ function getMainSave() {
 function downloadMainSave() {
 
     const data =
-        new Blob(
-            [
-                getMainSave()
-            ],
-            {
-                type:
-                    'text/plain'
-            }
-        );
+        new Blob([
+            getMainSave()
+        ]);
 
 
     const dataURL =
@@ -1799,33 +1801,35 @@ function downloadMainSave() {
         );
 
 
-    const fakeElement =
+    const link =
         document.createElement(
             'a'
         );
 
 
-    fakeElement.href =
+    link.href =
         dataURL;
 
-
-    fakeElement.download =
+    link.download =
         'monkey.data';
 
 
     document.body.appendChild(
-        fakeElement
+        link
     );
 
+    link.click();
 
-    fakeElement.click();
-
-
-    fakeElement.remove();
+    link.remove();
 
 
-    URL.revokeObjectURL(
-        dataURL
+    setTimeout(
+        function () {
+            URL.revokeObjectURL(
+                dataURL
+            );
+        },
+        100
     );
 }
 
@@ -1834,81 +1838,88 @@ function getMainSaveFromUpload(
     data
 ) {
 
-    data =
-        CryptoJS.AES.decrypt(
-            data,
-            'save'
-        ).toString(
-            CryptoJS.enc.Utf8
-        );
+    try {
+
+        if (
+            typeof CryptoJS !==
+            'undefined'
+        ) {
+
+            data =
+                CryptoJS.AES.decrypt(
+                    data,
+                    'save'
+                ).toString(
+                    CryptoJS.enc.Utf8
+                );
+        }
 
 
-    const mainSave =
-        JSON.parse(
-            atob(data)
-        );
+        const mainSave =
+            JSON.parse(
+                atob(data)
+            );
 
 
-    const mainLocalStorageSave =
-        JSON.parse(
+        const localStorageSave =
+            JSON.parse(
+                atob(
+                    mainSave.localStorage
+                )
+            );
+
+
+        const cookiesSave =
             atob(
-                mainSave.localStorage
-            )
+                mainSave.cookies
+            );
+
+
+        localStorageSave.forEach(
+            function (item) {
+
+                localStorage.setItem(
+                    item[0],
+                    item[1]
+                );
+            }
         );
 
 
-    const cookiesSave =
-        atob(
-            mainSave.cookies
+        document.cookie =
+            cookiesSave;
+
+
+        return true;
+
+    } catch (error) {
+
+        console.error(
+            'Could not restore save:',
+            error
         );
 
-
-    for (
-        const item
-        of mainLocalStorageSave
-    ) {
-
-        localStorage.setItem(
-            item[0],
-            item[1]
-        );
+        return false;
     }
-
-
-    document.cookie =
-        cookiesSave;
 }
 
 
 function uploadMainSave() {
 
-    const hiddenUpload =
+    const input =
         document.createElement(
             'input'
         );
 
 
-    hiddenUpload.type =
+    input.type =
         'file';
 
-
-    hiddenUpload.accept =
+    input.accept =
         '.data';
 
 
-    hiddenUpload.style.display =
-        'none';
-
-
-    document.body.appendChild(
-        hiddenUpload
-    );
-
-
-    hiddenUpload.click();
-
-
-    hiddenUpload.addEventListener(
+    input.addEventListener(
         'change',
         function (event) {
 
@@ -1917,7 +1928,6 @@ function uploadMainSave() {
 
 
             if (!file) {
-                hiddenUpload.remove();
                 return;
             }
 
@@ -1929,52 +1939,33 @@ function uploadMainSave() {
             reader.onload =
                 function (event) {
 
-                    try {
-
+                    const success =
                         getMainSaveFromUpload(
                             event.target.result
                         );
 
 
-                        const uploadResult =
-                            document.querySelector(
-                                '.upload-result'
-                            );
-
-
-                        if (
-                            uploadResult
-                        ) {
-
-                            uploadResult.innerText =
-                                'Uploaded save!';
-
-
-                            setTimeout(
-                                function () {
-
-                                    uploadResult.innerText =
-                                        '';
-
-                                },
-                                3000
-                            );
-                        }
-
-                    } catch (error) {
-
-                        console.error(
-                            'Could not load save:',
-                            error
+                    const result =
+                        document.querySelector(
+                            '.upload-result'
                         );
 
-                        alert(
-                            'The save file could not be loaded.'
+
+                    if (result) {
+
+                        result.innerText =
+                            success
+                                ? 'Uploaded save!'
+                                : 'Could not upload save.';
+
+                        setTimeout(
+                            function () {
+                                result.innerText =
+                                    '';
+                            },
+                            3000
                         );
                     }
-
-
-                    hiddenUpload.remove();
                 };
 
 
@@ -1982,6 +1973,26 @@ function uploadMainSave() {
                 file
             );
         }
+    );
+
+
+    document.body.appendChild(
+        input
+    );
+
+
+    input.click();
+
+
+    setTimeout(
+        function () {
+
+            if (input.parentNode) {
+                input.remove();
+            }
+
+        },
+        1000
     );
 }
 
@@ -2020,36 +2031,18 @@ const actions =
     );
 
 
-for (
-    const slot in keyConfig
-) {
+Object.keys(
+    keyConfig
+).forEach(
+    function (slot) {
 
-    if (
-        !Object.prototype.hasOwnProperty.call(
-            keyConfig,
-            slot
-        )
-    ) {
-        continue;
-    }
+        const slotData =
+            keyConfig[slot];
 
 
-    for (
-        const key in keyConfig[slot]
-    ) {
-
-        if (
-            !Object.prototype.hasOwnProperty.call(
-                keyConfig[slot],
-                key
-            )
-        ) {
-            continue;
+        if (!slotData) {
+            return;
         }
-
-
-        const correctKey =
-            keyConfig[slot][key];
 
 
         const slotDiv =
@@ -2059,73 +2052,96 @@ for (
 
 
         if (!slotDiv) {
-            continue;
+            return;
         }
 
 
-        let displayKey =
-            key;
+        Object.keys(
+            slotData
+        ).forEach(
+            function (key) {
 
+                const correctKey =
+                    slotData[key];
 
-        if (
-            key.includes(
-                'keySlot'
-            )
-        ) {
-
-            displayKey =
-                key.replace(
-                    /-/g,
-                    ' '
-                );
-        }
-
-
-        const keyElement =
-            slotDiv.getElementsByClassName(
-                displayKey
-            )[0];
-
-
-        if (!keyElement) {
-            continue;
-        }
-
-
-        if (
-            key !==
-            'slot-action'
-        ) {
-
-            keyElement.textContent =
-                correctKey;
-
-        } else {
-
-            for (
-                let i = 0;
-                i <
-                keyElement.options.length;
-                i++
-            ) {
 
                 if (
-                    keyElement
-                        .options[i]
-                        .value ===
-                    correctKey
+                    key ===
+                    'slot-action'
                 ) {
 
-                    keyElement.selectedIndex =
-                        i;
+                    const select =
+                        slotDiv.querySelector(
+                            '.slot-action'
+                        );
 
-                    break;
+
+                    if (select) {
+
+                        for (
+                            let i = 0;
+                            i <
+                            select.options.length;
+                            i++
+                        ) {
+
+                            if (
+                                select
+                                    .options[i]
+                                    .value ===
+                                correctKey
+                            ) {
+
+                                select.selectedIndex =
+                                    i;
+
+                                break;
+                            }
+                        }
+                    }
+
+                    return;
+                }
+
+
+                let displayKey =
+                    key;
+
+
+                if (
+                    key.includes(
+                        'keySlot'
+                    )
+                ) {
+
+                    displayKey =
+                        key.replace(
+                            /-/g,
+                            ' '
+                        );
+                }
+
+
+                const keyElement =
+                    slotDiv.getElementsByClassName(
+                        displayKey
+                    )[0];
+
+
+                if (keyElement) {
+
+                    keyElement.textContent =
+                        correctKey;
                 }
             }
-        }
+        );
     }
-}
+);
 
+
+/* =========================================================
+   KEY ACTION SELECTS
+   ========================================================= */
 
 actions.forEach(
     function (action) {
@@ -2134,13 +2150,22 @@ actions.forEach(
             'change',
             function () {
 
+                const parent =
+                    action.closest(
+                        '[id]'
+                    );
+
+
+                if (!parent) {
+                    return;
+                }
+
+
                 const slot =
-                    action.parentNode.id;
+                    parent.id;
 
 
-                if (
-                    !keyConfig[slot]
-                ) {
+                if (!keyConfig[slot]) {
 
                     keyConfig[slot] =
                         {};
@@ -2165,6 +2190,10 @@ actions.forEach(
 );
 
 
+/* =========================================================
+   KEY SLOTS
+   ========================================================= */
+
 keySlots.forEach(
     function (slot) {
 
@@ -2179,6 +2208,9 @@ keySlots.forEach(
                 const keyPressHandler =
                     function (event) {
 
+                        event.preventDefault();
+
+
                         slot.textContent =
                             event.key;
 
@@ -2189,8 +2221,19 @@ keySlots.forEach(
                         );
 
 
+                        const parent =
+                            slot.closest(
+                                '[id]'
+                            );
+
+
+                        if (!parent) {
+                            return;
+                        }
+
+
                         const parentSlot =
-                            slot.parentNode.id;
+                            parent.id;
 
 
                         if (
@@ -2207,15 +2250,28 @@ keySlots.forEach(
 
                         const key =
                             slot.className
-                                .replace(
-                                    / /g,
-                                    '-'
+                                .split(/\s+/)
+                                .find(
+                                    function (name) {
+                                        return name
+                                            .toLowerCase()
+                                            .includes(
+                                                'keyslot'
+                                            );
+                                    }
                                 );
+
+
+                        if (!key) {
+                            return;
+                        }
 
 
                         keyConfig[
                             parentSlot
-                        ][key] =
+                        ][
+                            key
+                        ] =
                             event.key;
 
 
@@ -2245,7 +2301,9 @@ keySlots.forEach(
 const pressedKeys = {};
 
 
-function onKeyRelease(event) {
+function onKeyRelease(
+    event
+) {
 
     const key =
         event.key.toLowerCase();
@@ -2256,7 +2314,9 @@ function onKeyRelease(event) {
 }
 
 
-function onKeyPress(event) {
+function onKeyPress(
+    event
+) {
 
     const key =
         event.key.toLowerCase();
@@ -2266,88 +2326,93 @@ function onKeyPress(event) {
         true;
 
 
-    for (
-        const slot in keyConfig
-    ) {
+    Object.keys(
+        keyConfig
+    ).forEach(
+        function (slot) {
 
-        if (
-            !Object.prototype.hasOwnProperty.call(
-                keyConfig,
-                slot
-            )
-        ) {
-            continue;
-        }
+            const settings =
+                keyConfig[slot];
 
 
-        const settings =
-            keyConfig[slot];
+            if (!settings) {
+                return;
+            }
 
 
-        if (
-            !settings ||
-            !settings[
-                'keySlot-1'
-            ] ||
-            !settings[
-                'keySlot-2'
-            ] ||
-            !settings[
-                'slot-action'
-            ]
-        ) {
-            continue;
-        }
+            const key1 =
+                settings[
+                    'keySlot-1'
+                ];
 
 
-        const key1 =
-            settings[
-                'keySlot-1'
-            ].toLowerCase();
+            const key2 =
+                settings[
+                    'keySlot-2'
+                ];
 
 
-        const key2 =
-            settings[
-                'keySlot-2'
-            ].toLowerCase();
-
-
-        const key3 =
-            (
+            const key3 =
                 settings[
                     'keySlot-3'
-                ] ||
-                ''
-            ).toLowerCase();
+                ];
 
 
-        if (
-            pressedKeys[key1] &&
-            pressedKeys[key2] &&
-            (
+            const action =
+                settings[
+                    'slot-action'
+                ];
+
+
+            if (
+                !key1 ||
+                !key2 ||
+                !action
+            ) {
+                return;
+            }
+
+
+            const key1Config =
+                key1.toLowerCase();
+
+
+            const key2Config =
+                key2.toLowerCase();
+
+
+            const key3Config =
                 key3
-                    ? pressedKeys[key3]
-                    : true
-            )
-        ) {
+                    ? key3.toLowerCase()
+                    : '';
 
-            try {
 
-                eval(
-                    settings[
-                        'slot-action'
-                    ]
-                );
+            if (
+                pressedKeys[key1Config] &&
+                pressedKeys[key2Config] &&
+                (
+                    key3Config
+                        ? pressedKeys[
+                            key3Config
+                          ]
+                        : true
+                )
+            ) {
 
-            } catch (error) {
+                try {
 
-                console.error(
-                    'Key action error:',
-                    error
-                );
+                    eval(action);
+
+                } catch (error) {
+
+                    console.error(
+                        'Key action failed:',
+                        error
+                    );
+                }
             }
         }
-    }
+    );
 }
 
 
@@ -2370,9 +2435,12 @@ document.addEventListener(
 /*
  * IMPORTANT:
  *
- * input[type="color"] does NOT support #373737a6.
+ * <input type="color"> does NOT accept:
  *
- * Use normal 6-digit hex values.
+ * #373737a6
+ * #111
+ *
+ * So these are changed to valid 6-digit colors.
  */
 
 const defaultColorSettings = {
@@ -2403,7 +2471,7 @@ const defaultColorSettings = {
 };
 
 
-let colorSettings;
+let colorSettings = {};
 
 
 try {
@@ -2414,66 +2482,92 @@ try {
                 'colorSettings'
             )
         ) ||
-        {
-            ...defaultColorSettings
-        };
+        defaultColorSettings;
 
 } catch (error) {
 
     colorSettings =
-        {
-            ...defaultColorSettings
-        };
+        defaultColorSettings;
 }
 
 
-/*
- * Fix old invalid color values that may already
- * exist in localStorage.
- */
-
-Object.keys(
-    defaultColorSettings
-).forEach(
-    function (key) {
-
-        if (
-            !colorSettings[key] ||
-            !/^#[0-9a-fA-F]{6}$/.test(
-                colorSettings[key]
-            )
-        ) {
-
-            colorSettings[key] =
-                defaultColorSettings[key];
-        }
-    }
-);
-
+/* ---------------------------------------------------------
+   APPLY COLORS
+   --------------------------------------------------------- */
 
 Object.keys(
     colorSettings
 ).forEach(
     function (key) {
 
-        const inputElement =
+        const input =
             document.getElementById(
                 key
             );
 
 
-        if (
-            inputElement &&
-            inputElement.type ===
-            'color'
-        ) {
+        if (input) {
 
-            inputElement.value =
+            /*
+             * type=color needs a valid
+             * 6-digit hexadecimal value.
+             */
+
+            let value =
                 colorSettings[key];
+
+
+            if (
+                /^#[0-9a-fA-F]{8}$/.test(
+                    value
+                )
+            ) {
+
+                value =
+                    value.substring(
+                        0,
+                        7
+                    );
+            }
+
+
+            if (
+                /^#[0-9a-fA-F]{3}$/.test(
+                    value
+                )
+            ) {
+
+                value =
+                    '#' +
+                    value[1] +
+                    value[1] +
+                    value[2] +
+                    value[2] +
+                    value[3] +
+                    value[3];
+            }
+
+
+            if (
+                /^#[0-9a-fA-F]{6}$/.test(
+                    value
+                )
+            ) {
+
+                input.value =
+                    value;
+
+                colorSettings[key] =
+                    value;
+            }
         }
     }
 );
 
+
+/* ---------------------------------------------------------
+   CSS VARIABLES
+   --------------------------------------------------------- */
 
 Object.entries(
     colorSettings
@@ -2488,6 +2582,10 @@ Object.entries(
 );
 
 
+/* =========================================================
+   SAVE COLOR CHANGES
+   ========================================================= */
+
 function saveColorChanges() {
 
     const inputs =
@@ -2496,23 +2594,17 @@ function saveColorChanges() {
         );
 
 
-    const newColorSettings = {};
+    const newColorSettings =
+        {};
 
 
     inputs.forEach(
         function (input) {
 
-            if (
-                /^#[0-9a-fA-F]{6}$/.test(
-                    input.value
-                )
-            ) {
-
-                newColorSettings[
-                    input.id
-                ] =
-                    input.value;
-            }
+            newColorSettings[
+                input.id
+            ] =
+                input.value;
         }
     );
 
@@ -2539,6 +2631,10 @@ function saveColorChanges() {
 }
 
 
+/* =========================================================
+   RESTORE COLORS
+   ========================================================= */
+
 function restoreColorChanges() {
 
     localStorage.removeItem(
@@ -2563,11 +2659,7 @@ function restoreColorChanges() {
                 );
 
 
-            if (
-                input &&
-                input.type ===
-                'color'
-            ) {
+            if (input) {
 
                 input.value =
                     value;
@@ -2589,9 +2681,7 @@ function randomGame() {
         );
 
 
-    if (
-        !gameLinks.length
-    ) {
+    if (!gameLinks.length) {
         return;
     }
 
@@ -2604,9 +2694,7 @@ function randomGame() {
 
 
     const randomGameLink =
-        gameLinks[
-            randomIndex
-        ];
+        gameLinks[randomIndex];
 
 
     const gameUrl =
@@ -2615,9 +2703,12 @@ function randomGame() {
         );
 
 
-    openGameInNewTab(
-        gameUrl
-    );
+    if (gameUrl) {
+
+        openGameInNewTab(
+            gameUrl
+        );
+    }
 }
 
 
@@ -2647,35 +2738,42 @@ const preferencesDefaults = {
 };
 
 
-if (
-    localStorage.getItem(
-        'preferences'
-    ) === null
-) {
-
-    localStorage.setItem(
-        'preferences',
-        JSON.stringify(
-            preferencesDefaults
-        )
-    );
-}
-
-
 let preferences;
 
 
 try {
 
-    preferences =
-        JSON.parse(
-            localStorage.getItem(
-                'preferences'
+    const savedPreferences =
+        localStorage.getItem(
+            'preferences'
+        );
+
+
+    if (!savedPreferences) {
+
+        localStorage.setItem(
+            'preferences',
+            JSON.stringify(
+                preferencesDefaults
             )
-        ) ||
-        {
-            ...preferencesDefaults
-        };
+        );
+
+
+        preferences =
+            {
+                ...preferencesDefaults
+            };
+
+    } else {
+
+        preferences =
+            {
+                ...preferencesDefaults,
+                ...JSON.parse(
+                    savedPreferences
+                )
+            };
+    }
 
 } catch (error) {
 
@@ -2736,7 +2834,7 @@ if (cloakCheckbox) {
 if (cloakUrl) {
 
     cloakUrl.value =
-        preferences.cloakUrl || '';
+        preferences.cloakUrl;
 }
 
 
@@ -2750,14 +2848,14 @@ if (maskCheckbox) {
 if (maskTitle) {
 
     maskTitle.value =
-        preferences.maskTitle || '';
+        preferences.maskTitle;
 }
 
 
 if (maskIcon) {
 
     maskIcon.value =
-        preferences.maskIconUrl || '';
+        preferences.maskIconUrl;
 }
 
 
@@ -2827,7 +2925,9 @@ const presets = {
 };
 
 
-function setPreset(object) {
+function setPreset(
+    object
+) {
 
     if (!object) {
         return;
@@ -2862,22 +2962,104 @@ function setPreset(object) {
 
 function updatePreset() {
 
-    const presetsElement =
+    const select =
         document.getElementById(
             'presets'
         );
 
 
-    if (!presetsElement) {
+    if (!select) {
         return;
     }
 
 
-    setPreset(
+    const preset =
         presets[
-            presetsElement.value
-        ]
-    );
+            select.value
+        ];
+
+
+    if (preset) {
+
+        setPreset(
+            preset
+        );
+    }
+}
+
+
+/* =========================================================
+   CLOAK STARTUP
+   ========================================================= */
+
+if (
+    preferences.cloak &&
+    window.location.href ===
+    window.top.location.href
+) {
+
+    if (
+        popupsAllowed()
+    ) {
+
+        makecloak();
+
+    } else {
+
+        currentMenu.fadeOut(
+            300,
+            function () {
+
+                $('.cloaklaunch')
+                    .fadeIn(200);
+            }
+        );
+
+
+        currentMenu =
+            $('.cloaklaunch');
+
+
+        document.addEventListener(
+            'click',
+            function (event) {
+
+                if (
+                    event.target.id ===
+                    'disableCloak'
+                ) {
+
+                    $('.cloaklaunch')
+                        .fadeOut(200);
+
+
+                    setTimeout(
+                        returnHome,
+                        200
+                    );
+
+
+                    return;
+                }
+
+
+                if (
+                    event.target.className !==
+                        'cloaklaunch' &&
+                    event.target.className !==
+                        'cloaker'
+                ) {
+
+                    return;
+                }
+
+
+                event.preventDefault();
+
+                makecloak();
+            }
+        );
+    }
 }
 
 
@@ -3082,7 +3264,7 @@ if (maskIconSubmit) {
 
 
 /* =========================================================
-   DOWNLOAD / UPLOAD BUTTONS
+   DOWNLOAD / UPLOAD
    ========================================================= */
 
 const downloadButton =
@@ -3116,87 +3298,6 @@ if (uploadButton) {
 
 
 /* =========================================================
-   CLOAK STARTUP
-   ========================================================= */
-
-if (
-    preferences.cloak &&
-    window.location.href ===
-    window.top.location.href
-) {
-
-    if (
-        popupsAllowed()
-    ) {
-
-        makecloak();
-
-    } else {
-
-        currentMenu.fadeOut(
-            300,
-            function () {
-
-                $('.cloaklaunch')
-                    .fadeIn(200);
-            }
-        );
-
-
-        currentMenu =
-            $('.cloaklaunch');
-
-
-        document.addEventListener(
-            'click',
-            function (event) {
-
-                if (
-                    event.target.id ===
-                    'disableCloak'
-                ) {
-
-                    $('.cloaklaunch')
-                        .fadeOut(200);
-
-
-                    setTimeout(
-                        returnHome,
-                        200
-                    );
-
-
-                    return;
-                }
-
-
-                const target =
-                    event.target;
-
-
-                if (
-                    !target.classList.contains(
-                        'cloaklaunch'
-                    ) &&
-                    !target.classList.contains(
-                        'cloaker'
-                    )
-                ) {
-                    return;
-                }
-
-
-                event.preventDefault();
-
-
-                makecloak();
-            }
-        );
-    }
-}
-
-
-/* =========================================================
    MASK STARTUP
    ========================================================= */
 
@@ -3212,8 +3313,9 @@ if (
    INITIAL GAME LIST UPDATE
    ========================================================= */
 
-$(function () {
+$(document).ready(
+    function () {
 
-    updateList();
-
-});
+        updateList();
+    }
+);
