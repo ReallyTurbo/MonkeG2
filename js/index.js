@@ -1,21 +1,19 @@
-let currentMenu = $('.homepage');
-
 /*
  * ============================================================
  * GAME LIST
  * ============================================================
  *
- * Clicking ANY game in #gamesList will open the URL stored in
- * that game's `url` attribute.
+ * Each game stores its destination in the `url` attribute.
  *
  * Example:
- * <li url="/games/basket-random/">Basket Random</li>
- *
- * This works for every game automatically.
+ * <li url="https://your-site.com/basket-random">
+ *     Basket Random
+ * </li>
  */
 
 $(document).on('click', '#gamesList li', function (event) {
-    // Ignore clicks caused by dragging the element.
+
+    // Ignore clicks caused by dragging
     if (window.hold) {
         window.hold = false;
         return;
@@ -28,13 +26,10 @@ $(document).on('click', '#gamesList li', function (event) {
         return;
     }
 
-    const fullGameUrl = new URL(gameUrl, window.location.href).href;
+    console.log('Opening game:', gameUrl);
 
-    console.log('Opening game:', fullGameUrl);
-
-    inGame = true;
-
-    window.location.href = fullGameUrl;
+    // Open the game's stored URL in a NEW TAB
+    window.open(gameUrl, '_blank');
 });
 
 
