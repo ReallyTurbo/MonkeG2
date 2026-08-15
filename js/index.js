@@ -1,70 +1,82 @@
 let currentMenu = $('.homepage');
 
+
+/* =========================================================
+   GAME URL HANDLING
+   ========================================================= */
+
 function fixGameUrl(url) {
+    if (!url) {
+        return url;
+    }
+
+    url = String(url).trim();
+
+    /*
+     * Convert:
+     *
+     * /games/basket-random
+     *
+     * into:
+     *
+     * /games/basket-random/
+     *
+     * This is important for Render because the game files
+     * are served from the directory URL.
+     */
+
     if (
-        url &&
         url.startsWith('/games/') &&
         !url.endsWith('/') &&
         !url.includes('.html')
     ) {
-        return url + '/';
+        url += '/';
     }
 
     return url;
 }
-$(document).on('click', '#gamesList li', function (event) {
-    event.preventDefault();
 
-    const gameUrl = fixGameUrl(
-        this.getAttribute('url')
-    );
 
-    if (gameUrl) {
-        openGameInNewTab(gameUrl);
+function getFullGameUrl(gameUrl) {
+    gameUrl = fixGameUrl(gameUrl);
+
+    if (!gameUrl) {
+        return null;
     }
-});
 
-$('logo img').on('click', returnHome);
-$('#gameButton').on('click', returnHome);
-$('#refresh').on('click', refreshPage);
+    try {
+        return new URL(
+            gameUrl,
+            window.location.origin
+        ).href;
+    } catch (error) {
+        console.error(
+            'Invalid game URL:',
+            gameUrl,
+            error
+        );
 
-$('dialog').on('click', function (e) {
-    if (!e.originalEvent.target.closest('div')) {
-        e.originalEvent.target.close();
+        return null;
     }
-});
+}
 
 
 /* =========================================================
-   GAME OPENING
+   OPEN GAME IN NEW TAB
    ========================================================= */
 
-/*
- * Opens a game in a new tab.
- *
- * Relative URLs such as:
- *
- * /games/ampler-launcher/mc/1.12.2
- *
- * automatically use the current website's domain.
- *
- * So on Render:
- *
- * https://monkegg2.onrender.com
- *
- * it becomes:
- *
- * https://monkegg2.onrender.com/games/ampler-launcher/mc/1.12.2
- */
 function openGameInNewTab(gameUrl) {
-    if (!gameUrl) return;
+    const fullUrl =
+        getFullGameUrl(gameUrl);
 
-    gameUrl = fixGameUrl(gameUrl);
+    if (!fullUrl) {
+        return;
+    }
 
-    const fullUrl = new URL(
-        gameUrl,
-        window.location.origin
-    ).href;
+    console.log(
+        'Opening game:',
+        fullUrl
+    );
 
     window.open(
         fullUrl,
@@ -73,28 +85,193 @@ function openGameInNewTab(gameUrl) {
 }
 
 
-/*
- * Game list click handler.
- *
- * Every game only needs a "url" attribute.
- *
- * Example:
- *
- * <li url="/games/basket-random">Basket Random</li>
- *
- * <li url="/games/ampler-launcher/mc/1.12.2">
- *     Ampler Launcher
- * </li>
- */
-$(document).on('click', '#gamesList li', function (event) {
-    event.preventDefault();
+/* =========================================================
+   GAME LIST
+   ========================================================= */
 
-    const url = fixGameUrl(game.getAttribute('url'));
+$(document).on(
+    'click',
+    '#gamesList li',
+    function (event) {
 
-    if (gameUrl) {
-        openGameInNewTab(gameUrl);
+        event.preventDefault();
+
+        const gameUrl =
+            this.getAttribute('url');
+
+        const fullUrl =
+            getFullGameUrl(gameUrl);
+
+        if (!fullUrl) {
+            console.error(
+                'Game has no URL:',
+                this
+            );
+
+            return;
+        }
+
+        openGameInNewTab(fullUrl);
     }
-});
+);
+
+
+/* =========================================================
+   MENU BUTTONS
+   ========================================================= */
+
+$('.column button .card').on(
+    'click',
+    function () {
+
+        const nextMenu =
+            this.getAttribute('data');
+
+        if (!nextMenu) {
+            return;
+        }
+
+
+        /* =========================
+           PROXY
+           ========================= */
+
+        if (nextMenu === 'proxy') {
+
+            if (
+                typeof config !== 'undefined' &&
+                !config['proxy']
+            ) {
+                $('#disabled').showModal();
+                return;
+            }
+
+            currentMenu.fadeOut(
+                300,
+                function () {
+
+                    $('#page-loader').fadeIn(200);
+
+                    const proxyPath =
+                        (
+                            typeof config !== 'undefined' &&
+                            config['proxyPath']
+                        )
+                            ? config['proxyPath']
+                            : '/proxy';
+
+                    $('#page-loader iframe')
+                        .attr(
+                            'src',
+                            proxyPath
+                        );
+
+                    const iframe =
+                        $('#page-loader iframe')[0];
+
+                    if (iframe) {
+                        iframe.focus();
+                    }
+                }
+            );
+
+            currentMenu =
+                $('#page-loader');
+
+            if (
+                typeof preferences !== 'undefined'
+            ) {
+                inGame =
+                    !preferences.background;
+            }
+
+            return;
+        }
+
+
+        /* =========================
+           NORMAL MENU
+           ========================= */
+
+        const nextMenuElement =
+            $('.' + nextMenu);
+
+        if (!nextMenuElement.length) {
+            console.warn(
+                'Menu not found:',
+                nextMenu
+            );
+
+            return;
+        }
+
+        currentMenu.fadeOut(
+            300,
+            function () {
+                nextMenuElement.fadeIn(200);
+            }
+        );
+
+        currentMenu =
+            nextMenuElement;
+    }
+);
+
+
+/* =========================================================
+   HOME / REFRESH BUTTONS
+   ========================================================= */
+
+$('logo img').on(
+    'click',
+    returnHome
+);
+
+
+$('#gameButton').on(
+    'click',
+    function () {
+
+        if (window.hold) {
+            return;
+        }
+
+        returnHome();
+    }
+);
+
+
+$('#refresh').on(
+    'click',
+    function () {
+
+        if (window.hold) {
+            return;
+        }
+
+        refreshPage();
+    }
+);
+
+
+/* =========================================================
+   DIALOGS
+   ========================================================= */
+
+$('dialog').on(
+    'click',
+    function (event) {
+
+        const target =
+            event.target;
+
+        if (
+            target === this
+        ) {
+            this.close();
+        }
+    }
+);
 
 
 /* =========================================================
@@ -102,55 +279,113 @@ $(document).on('click', '#gamesList li', function (event) {
    ========================================================= */
 
 function jaro_distance(s1, s2) {
-    if (s1 == s2) return 1.0;
 
-    let len1 = s1.length,
-        len2 = s2.length;
+    if (s1 === s2) {
+        return 1.0;
+    }
 
-    if (len1 == 0 || len2 == 0) return 0.0;
+    const len1 = s1.length;
+    const len2 = s2.length;
 
-    let max_dist = Math.floor(Math.max(len1, len2) / 2) - 1;
+    if (
+        len1 === 0 ||
+        len2 === 0
+    ) {
+        return 0.0;
+    }
+
+    const max_dist =
+        Math.max(
+            Math.floor(
+                Math.max(len1, len2) / 2
+            ) - 1,
+            0
+        );
 
     let match = 0;
 
-    let hash_s1 = new Array(s1.length);
-    hash_s1.fill(0);
+    const hash_s1 =
+        new Array(len1).fill(0);
 
-    let hash_s2 = new Array(s2.length);
-    hash_s2.fill(0);
+    const hash_s2 =
+        new Array(len2).fill(0);
 
-    for (let i = 0; i < len1; i++) {
+
+    for (
+        let i = 0;
+        i < len1;
+        i++
+    ) {
+
         for (
-            let j = Math.max(0, i - max_dist);
-            j < Math.min(len2, i + max_dist + 1);
+            let j =
+                Math.max(
+                    0,
+                    i - max_dist
+                );
+
+            j <
+            Math.min(
+                len2,
+                i + max_dist + 1
+            );
+
             j++
         ) {
+
             if (
-                s1[i] == s2[j] &&
-                hash_s2[j] == 0
+                s1[i] === s2[j] &&
+                hash_s2[j] === 0
             ) {
+
                 hash_s1[i] = 1;
                 hash_s2[j] = 1;
+
                 match++;
+
                 break;
             }
         }
     }
 
-    if (match == 0) return 0.0;
+
+    if (match === 0) {
+        return 0.0;
+    }
+
 
     let t = 0;
     let point = 0;
 
-    for (let i = 0; i < len1; i++) {
-        if (hash_s1[i] == 1) {
-            while (hash_s2[point] == 0) point++;
 
-            if (s1[i] != s2[point++]) t++;
+    for (
+        let i = 0;
+        i < len1;
+        i++
+    ) {
+
+        if (
+            hash_s1[i] === 1
+        ) {
+
+            while (
+                hash_s2[point] === 0
+            ) {
+                point++;
+            }
+
+            if (
+                s1[i] !==
+                s2[point++]
+            ) {
+                t++;
+            }
         }
     }
 
+
     t /= 2;
+
 
     return (
         match / len1 +
@@ -160,165 +395,272 @@ function jaro_distance(s1, s2) {
 }
 
 
-function jaroWinklerSimilarity(s1, s2) {
-    let jaro_dist = jaro_distance(s1, s2);
+function jaroWinklerSimilarity(
+    s1,
+    s2
+) {
 
-    if (jaro_dist > 0.7) {
+    const jaro_dist =
+        jaro_distance(
+            s1,
+            s2
+        );
+
+    let result =
+        jaro_dist;
+
+
+    if (
+        jaro_dist > 0.7
+    ) {
+
         let prefix = 0;
+
 
         for (
             let i = 0;
-            i < Math.min(s1.length, s2.length);
+            i <
+            Math.min(
+                s1.length,
+                s2.length
+            );
+
             i++
         ) {
-            if (s1[i] == s2[i]) {
+
+            if (
+                s1[i] ===
+                s2[i]
+            ) {
                 prefix++;
             } else {
                 break;
             }
         }
 
-        prefix = Math.min(4, prefix);
 
-        jaro_dist +=
+        prefix =
+            Math.min(
+                4,
+                prefix
+            );
+
+
+        result +=
             0.1 *
             prefix *
-            (1 - jaro_dist);
+            (1 - result);
     }
 
-    return jaro_dist.toFixed(6);
+
+    return Number(
+        result.toFixed(6)
+    );
 }
 
 
 /* =========================================================
-   GAME LIST
+   GAME LIST UPDATE
    ========================================================= */
 
 function updateList() {
-    const filter = $('#search').val().toLowerCase();
-    const elems = Array.from(
-        document.querySelectorAll('#gamesList li')
+
+    const searchElement =
+        $('#search');
+
+    const sortElement =
+        $('#sort');
+
+    const gamesList =
+        document.getElementById(
+            'gamesList'
+        );
+
+
+    if (!gamesList) {
+        return;
+    }
+
+
+    const filter =
+        (
+            searchElement.val() ||
+            ''
+        )
+            .toString()
+            .toLowerCase();
+
+
+    const elems =
+        Array.from(
+            gamesList.querySelectorAll(
+                'li'
+            )
+        );
+
+
+    const sortType =
+        sortElement.val();
+
+
+    /* =========================
+       FILTER
+       ========================= */
+
+    elems.forEach(
+        function (item) {
+
+            const text =
+                item.textContent
+                    .toLowerCase();
+
+
+            let similarity =
+                jaroWinklerSimilarity(
+                    filter,
+                    text
+                );
+
+
+            const aliases =
+                item.getAttribute(
+                    'aliases'
+                );
+
+
+            if (aliases) {
+
+                aliases
+                    .split(',')
+                    .forEach(
+                        function (alias) {
+
+                            alias =
+                                alias
+                                    .trim()
+                                    .toLowerCase();
+
+                            if (
+                                alias.length > 0
+                            ) {
+
+                                similarity +=
+                                    jaroWinklerSimilarity(
+                                        filter,
+                                        alias
+                                    );
+                            }
+                        }
+                    );
+            }
+
+
+            const matches =
+                filter === '' ||
+                text.includes(filter) ||
+                similarity >= 0.7;
+
+
+            item.style.display =
+                matches
+                    ? ''
+                    : 'none';
+        }
     );
 
-    const sortType = $('#sort').val();
 
-    elems.sort(function (a, b) {
-        if (sortType === 'alphabetical') {
-            return a.textContent.localeCompare(b.textContent);
-        } else if (sortType === 'reverse') {
-            return b.textContent.localeCompare(a.textContent);
-        }
+    /* =========================
+       SORT
+       ========================= */
 
-        return 0;
-    });
+    elems.sort(
+        function (a, b) {
 
-    elems.forEach(function (item) {
-        let similarity = jaroWinklerSimilarity(
-            filter,
-            item.innerHTML
-                .toLowerCase()
-                .slice(0, filter.length - 1)
-        );
-
-        if (item.getAttribute('aliases')) {
-            for (
-                alias of item
-                    .getAttribute('aliases')
-                    .split(',')
+            if (
+                sortType ===
+                'alphabetical'
             ) {
-                if (alias.length > 1) {
-                    similarity += jaroWinklerSimilarity(
-                        filter,
-                        alias
-                            .toLowerCase()
-                            .slice(0, filter.length - 1)
+
+                return a.textContent
+                    .localeCompare(
+                        b.textContent
                     );
-                }
             }
-        }
-
-        if (
-            (
-                similarity >= 0.7 &&
-                item.innerHTML.length > 2
-            ) ||
-            item.innerHTML
-                .toLowerCase()
-                .indexOf(filter) > -1
-        ) {
-            item.style.display = '';
-        } else {
-            item.style.display = 'none';
-        }
-    });
 
 
-    elems.sort(function (a, b) {
-        let distanceA = jaroWinklerSimilarity(
-            filter,
-            a.textContent.toLowerCase()
-        );
-
-        if (a.getAttribute('aliases')) {
-            for (
-                alias of a
-                    .getAttribute('aliases')
-                    .split(',')
+            if (
+                sortType ===
+                'reverse'
             ) {
-                distanceA += jaroWinklerSimilarity(
-                    filter,
-                    alias.toLowerCase()
-                );
+
+                return b.textContent
+                    .localeCompare(
+                        a.textContent
+                    );
             }
+
+
+            return 0;
         }
+    );
 
-        let distanceB = jaroWinklerSimilarity(
-            filter,
-            b.textContent.toLowerCase()
-        );
 
-        if (b.getAttribute('aliases')) {
-            for (
-                alias of b
-                    .getAttribute('aliases')
-                    .split(',')
-            ) {
-                distanceB += jaroWinklerSimilarity(
-                    filter,
-                    alias.toLowerCase()
-                );
-            }
+    elems.forEach(
+        function (item) {
+            gamesList.appendChild(item);
         }
-
-        return distanceA - distanceB;
-    });
+    );
 
 
-    for (const item of elems) {
-        document
-            .getElementById('gamesList')
-            .appendChild(item);
-
+    if (
+        typeof updateGameList ===
+        'function'
+    ) {
         updateGameList();
     }
 }
 
 
-$('#search').on('input', updateList);
-$('#sort').on('change', updateList);
+$('#search').on(
+    'input',
+    updateList
+);
+
+
+$('#sort').on(
+    'change',
+    updateList
+);
 
 
 /* =========================================================
    DRAG BUTTONS
    ========================================================= */
 
-dragElement(
-    document.getElementById('gameButton')
-);
+if (
+    document.getElementById(
+        'gameButton'
+    )
+) {
+    dragElement(
+        document.getElementById(
+            'gameButton'
+        )
+    );
+}
 
-dragElement(
-    document.getElementById('refresh')
-);
+
+if (
+    document.getElementById(
+        'refresh'
+    )
+) {
+    dragElement(
+        document.getElementById(
+            'refresh'
+        )
+    );
+}
 
 
 /* =========================================================
@@ -326,6 +668,7 @@ dragElement(
    ========================================================= */
 
 const sequences = [
+
     {
         keys: [
             'ArrowUp',
@@ -340,7 +683,13 @@ const sequences = [
             'KeyA',
             'Enter'
         ],
-        action: () => alert('No easter egg here')
+
+        action:
+            function () {
+                alert(
+                    'No easter egg here'
+                );
+            }
     },
 
     {
@@ -357,37 +706,66 @@ const sequences = [
             'KeyO',
             'KeyW'
         ],
+
         action: snow
     }
 ];
 
 
-let index = 0;
+let sequenceIndex = 0;
 
-document.addEventListener('keydown', (event) => {
-    let failed = true;
 
-    for (const sequence of sequences) {
-        if (event.code === sequence.keys[index]) {
-            failed = false;
-            index++;
+document.addEventListener(
+    'keydown',
+    function (event) {
 
-            if (index === sequence.keys.length) {
-                sequence.action();
-                index = 0;
-            }
-        } else if (
-            event.code === sequence.keys[0]
+        let matched = false;
+
+
+        for (
+            const sequence
+            of sequences
         ) {
-            failed = false;
-            index = 1;
+
+            if (
+                event.code ===
+                sequence.keys[
+                    sequenceIndex
+                ]
+            ) {
+
+                matched = true;
+
+                sequenceIndex++;
+
+
+                if (
+                    sequenceIndex ===
+                    sequence.keys.length
+                ) {
+
+                    sequence.action();
+
+                    sequenceIndex = 0;
+                }
+
+            } else if (
+                event.code ===
+                sequence.keys[0]
+            ) {
+
+                matched = true;
+
+                sequenceIndex = 1;
+            }
+        }
+
+
+        if (!matched) {
+            sequenceIndex = 0;
         }
     }
-
-    if (failed) {
-        index = 0;
-    }
-});
+);
 
 
 /* =========================================================
@@ -395,150 +773,247 @@ document.addEventListener('keydown', (event) => {
    ========================================================= */
 
 function snow() {
-    function i() {
-        this.D = function () {
-            const t = h.atan(this.i / this.d);
-
-            l.save();
-            l.translate(this.b, this.a);
-            l.rotate(-t);
-            l.scale(
-                this.e,
-                this.e * h.max(
-                    1,
-                    h.pow(this.j, 0.7) / 15
-                )
-            );
-
-            l.drawImage(
-                m,
-                -v / 2,
-                -v / 2
-            );
-
-            l.restore();
-        };
-    }
-
-    window;
 
     const h = Math;
     const r = h.random;
     const a = document;
     const o = Date.now;
 
-    e = (t) => {
+
+    function Snowflake() {
+
+        this.D =
+            function () {
+
+                const t =
+                    h.atan(
+                        this.i /
+                        this.d
+                    );
+
+
+                l.save();
+
+                l.translate(
+                    this.b,
+                    this.a
+                );
+
+                l.rotate(
+                    -t
+                );
+
+                l.scale(
+                    this.e,
+                    this.e *
+                    h.max(
+                        1,
+                        h.pow(
+                            this.j,
+                            0.7
+                        ) / 15
+                    )
+                );
+
+
+                l.drawImage(
+                    m,
+                    -v / 2,
+                    -v / 2
+                );
+
+
+                l.restore();
+            };
+    }
+
+
+    function animate() {
+
         l.clearRect(
             0,
             0,
-            _,
-            f
+            canvasWidth,
+            canvasHeight
         );
 
-        l.fill();
 
-        requestAnimationFrame(e);
+        requestAnimationFrame(
+            animate
+        );
 
-        const i = 0.001 * y.et;
 
-        y.r();
+        const delta =
+            0.001 *
+            timer.et;
 
-        const s = L.et * g;
+
+        timer.r();
+
+
+        const time =
+            timer2.et *
+            gravity;
+
 
         for (
-            var n = 0;
-            n < C.length;
-            ++n
+            let n = 0;
+            n < snowflakes.length;
+            n++
         ) {
-            const t = C[n];
 
-            t.i = h.sin(
-                s + t.g
-            ) * t.h;
+            const flake =
+                snowflakes[n];
 
-            t.j = h.sqrt(
-                t.i * t.i + t.f
-            );
 
-            t.a += t.d * i;
-            t.b += t.i * i;
+            flake.i =
+                h.sin(
+                    time +
+                    flake.g
+                ) *
+                flake.h;
 
-            t.a > w && (t.a = -u);
-            t.b > b && (t.b = -u);
-            t.b < -u && (t.b = b);
 
-            t.D();
+            flake.j =
+                h.sqrt(
+                    flake.i *
+                    flake.i +
+                    flake.f
+                );
+
+
+            flake.a +=
+                flake.d *
+                delta;
+
+
+            flake.b +=
+                flake.i *
+                delta;
+
+
+            if (
+                flake.a >
+                bottom
+            ) {
+                flake.a = -offset;
+            }
+
+
+            if (
+                flake.b >
+                right
+            ) {
+                flake.b = -offset;
+            }
+
+
+            if (
+                flake.b <
+                -offset
+            ) {
+                flake.b = right;
+            }
+
+
+            flake.D();
         }
-    };
+    }
 
-    s = (t) => {
-        for (
-            var e = 0;
-            e < p;
-            ++e
+
+    function resize() {
+
+        canvas.width =
+            canvasWidth =
+            window.innerWidth;
+
+
+        canvas.height =
+            canvasHeight =
+            window.innerHeight;
+
+
+        bottom =
+            canvasHeight +
+            offset;
+
+
+        right =
+            canvasWidth +
+            offset;
+
+
+        resetSnow();
+    }
+
+
+    class Timer {
+
+        constructor(
+            duration,
+            start = true
         ) {
-            C[e].a =
-                r() * (f + u);
 
-            C[e].b =
-                r() * _;
-        }
-    };
-
-    n = (t) => {
-        c.width = _ = innerWidth;
-        c.height = f = innerHeight;
-
-        w = f + u;
-        b = _ + u;
-
-        s();
-    };
-
-
-    class d {
-        constructor(t, e = !0) {
             this._ts = o();
-            this._p = !0;
+            this._p = true;
             this._pa = o();
-            this.d = t;
+            this.d = duration;
 
-            if (e) {
+
+            if (start) {
                 this.s();
             }
         }
 
+
         get et() {
+
             return this.ip
-                ? this._pa - this._ts
-                : o() - this._ts;
+                ? this._pa -
+                    this._ts
+                : o() -
+                    this._ts;
         }
 
+
         get rt() {
+
             return h.max(
                 0,
-                this.d - this.et
+                this.d -
+                this.et
             );
         }
+
 
         get ip() {
             return this._p;
         }
 
+
         get ic() {
-            return this.et >= this.d;
+            return (
+                this.et >=
+                this.d
+            );
         }
 
-        s() {
-            this._ts =
-                o() - this.et;
 
-            this._p = !1;
+        s() {
+
+            this._ts =
+                o() -
+                this.et;
+
+            this._p =
+                false;
 
             return this;
         }
 
+
         r() {
+
             this._pa =
                 this._ts =
                 o();
@@ -546,14 +1021,18 @@ function snow() {
             return this;
         }
 
+
         p() {
+
             this._p = true;
             this._pa = o();
 
             return this;
         }
 
+
         st() {
+
             this._p = true;
 
             return this;
@@ -561,45 +1040,83 @@ function snow() {
     }
 
 
-    const c =
-        a.createElement('canvas');
+    const canvas =
+        a.createElement(
+            'canvas'
+        );
 
-    H = c.style;
 
-    H.position = 'fixed';
-    H.left = 0;
-    H.top = 0;
-    H.width = '100vw';
-    H.height = '100vh';
-    H.zIndex = '100000';
-    H.pointerEvents = 'none';
+    canvas.style.position =
+        'fixed';
+
+    canvas.style.left =
+        '0';
+
+    canvas.style.top =
+        '0';
+
+    canvas.style.width =
+        '100vw';
+
+    canvas.style.height =
+        '100vh';
+
+    canvas.style.zIndex =
+        '100000';
+
+    canvas.style.pointerEvents =
+        'none';
+
 
     a.body.insertBefore(
-        c,
+        canvas,
         a.body.children[0]
     );
 
 
     const l =
-        c.getContext('2d');
+        canvas.getContext(
+            '2d'
+        );
 
-    const p = 300;
-    const g = 5e-4;
-    const u = 20;
 
-    let _ = c.width = innerWidth;
-    let f = c.height = innerHeight;
-
-    let w = f + u;
-    let b = _ + u;
-
+    const particleCount = 300;
+    const gravity = 5e-4;
+    const offset = 20;
     const v = 15.2;
 
+
+    let canvasWidth =
+        canvas.width =
+        window.innerWidth;
+
+
+    let canvasHeight =
+        canvas.height =
+        window.innerHeight;
+
+
+    let bottom =
+        canvasHeight +
+        offset;
+
+
+    let right =
+        canvasWidth +
+        offset;
+
+
     const m =
-        a.createElement('canvas');
+        a.createElement(
+            'canvas'
+        );
+
 
     const E =
-        m.getContext('2d');
+        m.getContext(
+            '2d'
+        );
+
 
     const x =
         E.createRadialGradient(
@@ -611,17 +1128,21 @@ function snow() {
             7.6
         );
 
+
     x.addColorStop(
         0,
-        'hsla(255,255%,255%,1)'
+        'rgba(255,255,255,1)'
     );
+
 
     x.addColorStop(
         1,
-        'hsla(255,255%,255%,0)'
+        'rgba(255,255,255,0)'
     );
 
+
     E.fillStyle = x;
+
 
     E.fillRect(
         0,
@@ -631,74 +1152,148 @@ function snow() {
     );
 
 
-    let y = new d(0, true);
-    let C = [];
-    let L = new d(0, true);
+    const timer =
+        new Timer(
+            0,
+            true
+        );
 
 
-    for (
-        var j = 0;
-        j < p;
-        ++j
-    ) {
-        const t = new i();
+    const timer2 =
+        new Timer(
+            0,
+            true
+        );
 
-        t.a =
-            r() * (f + u);
 
-        t.b =
-            r() * _;
+    const snowflakes = [];
 
-        t.c =
-            1 * (3 * r() + 0.8);
 
-        t.d =
-            0.1 *
-            h.pow(t.c, 2.5) *
-            50 *
-            (2 * r() + 1);
+    function resetSnow() {
 
-        t.d =
-            t.d < 65
-                ? 65
-                : t.d;
+        for (
+            let e = 0;
+            e < particleCount;
+            e++
+        ) {
 
-        t.e =
-            t.c / 7.6;
+            snowflakes[e].a =
+                r() *
+                (
+                    canvasHeight +
+                    offset
+                );
 
-        t.f =
-            t.d * t.d;
 
-        t.g =
-            (r() * h.PI) / 1.3;
-
-        t.h =
-            15 * t.c;
-
-        t.i = 0;
-        t.j = 0;
-
-        C.push(t);
+            snowflakes[e].b =
+                r() *
+                canvasWidth;
+        }
     }
 
 
-    s();
+    for (
+        let j = 0;
+        j < particleCount;
+        j++
+    ) {
 
-    EL = a.addEventListener;
+        const flake =
+            new Snowflake();
 
-    EL(
+
+        flake.a =
+            r() *
+            (
+                canvasHeight +
+                offset
+            );
+
+
+        flake.b =
+            r() *
+            canvasWidth;
+
+
+        flake.c =
+            3 *
+            r() +
+            0.8;
+
+
+        flake.d =
+            0.1 *
+            h.pow(
+                flake.c,
+                2.5
+            ) *
+            50 *
+            (
+                2 * r() + 1
+            );
+
+
+        if (
+            flake.d < 65
+        ) {
+            flake.d = 65;
+        }
+
+
+        flake.e =
+            flake.c /
+            7.6;
+
+
+        flake.f =
+            flake.d *
+            flake.d;
+
+
+        flake.g =
+            (
+                r() *
+                h.PI
+            ) /
+            1.3;
+
+
+        flake.h =
+            15 *
+            flake.c;
+
+
+        flake.i = 0;
+        flake.j = 0;
+
+
+        snowflakes.push(
+            flake
+        );
+    }
+
+
+    resetSnow();
+
+
+    document.addEventListener(
         'visibilitychange',
-        () => setTimeout(n, 100),
-        false
+        function () {
+            setTimeout(
+                resize,
+                100
+            );
+        }
     );
 
-    EL(
+
+    window.addEventListener(
         'resize',
-        n,
-        false
+        resize
     );
 
-    e();
+
+    animate();
 }
 
 
@@ -707,32 +1302,42 @@ function snow() {
    ========================================================= */
 
 function dragElement(elmnt) {
-    if (!elmnt) return;
+
+    if (!elmnt) {
+        return;
+    }
+
 
     let pos1 = 0;
     let pos2 = 0;
     let pos3 = 0;
     let pos4 = 0;
 
-    if (document.getElementById(elmnt.id)) {
-        document.getElementById(
-            elmnt.id
-        ).onmousedown = dragMouseDown;
-    } else {
-        elmnt.onmousedown = dragMouseDown;
-    }
+
+    elmnt.onmousedown =
+        dragMouseDown;
 
 
     function dragMouseDown(e) {
-        e = e || window.event;
+
+        e =
+            e ||
+            window.event;
+
 
         e.preventDefault();
 
-        pos3 = e.clientX;
-        pos4 = e.clientY;
+
+        pos3 =
+            e.clientX;
+
+        pos4 =
+            e.clientY;
+
 
         document.onmouseup =
             closeDragElement;
+
 
         document.onmousemove =
             elementDrag;
@@ -740,40 +1345,78 @@ function dragElement(elmnt) {
 
 
     function elementDrag(e) {
-        e = e || window.event;
+
+        e =
+            e ||
+            window.event;
+
 
         e.preventDefault();
 
+
         pos1 =
-            pos3 - e.clientX;
+            pos3 -
+            e.clientX;
+
 
         pos2 =
-            pos4 - e.clientY;
+            pos4 -
+            e.clientY;
 
-        pos3 = e.clientX;
-        pos4 = e.clientY;
+
+        pos3 =
+            e.clientX;
+
+
+        pos4 =
+            e.clientY;
+
 
         window.click = 1;
 
+
         elmnt.style.top =
-            elmnt.offsetTop -
-            pos2 +
+            (
+                elmnt.offsetTop -
+                pos2
+            ) +
+            'px';
+
+
+        elmnt.style.left =
+            (
+                elmnt.offsetLeft -
+                pos1
+            ) +
             'px';
     }
 
 
     function closeDragElement() {
-        document.onmouseup = null;
-        document.onmousemove = null;
 
-        if (window.click == 1) {
+        document.onmouseup =
+            null;
+
+
+        document.onmousemove =
+            null;
+
+
+        if (
+            window.click === 1
+        ) {
+
             window.hold = true;
             window.click = 0;
-        }
 
-        setTimeout(function () {
-            window.hold = false;
-        }, 100);
+
+            setTimeout(
+                function () {
+                    window.hold = false;
+                },
+                100
+            );
+        }
     }
 }
 
@@ -783,16 +1426,35 @@ function dragElement(elmnt) {
    ========================================================= */
 
 function returnHome() {
-    currentMenu.fadeOut(300, () => {
-        $('#everything-else').fadeIn(200);
-        $('.games').hide();
-        $('.homepage').fadeIn(200);
-    });
 
-    currentMenu = $('.homepage');
+    currentMenu.fadeOut(
+        300,
+        function () {
 
-    inGame =
-        !preferences.background;
+            $('#everything-else')
+                .fadeIn(200);
+
+            $('.games')
+                .hide();
+
+            $('.homepage')
+                .fadeIn(200);
+        }
+    );
+
+
+    currentMenu =
+        $('.homepage');
+
+
+    if (
+        typeof preferences !==
+        'undefined'
+    ) {
+
+        inGame =
+            !preferences.background;
+    }
 }
 
 
@@ -801,22 +1463,42 @@ function returnHome() {
    ========================================================= */
 
 function refreshPage() {
+
+    const iframe =
+        $('#page-loader iframe');
+
+
+    if (!iframe.length) {
+        return;
+    }
+
+
     const oldUrl =
-        $('#page-loader iframe').attr('src');
+        iframe.attr('src');
 
-    console.log(oldUrl);
 
-    $('#page-loader iframe').attr(
+    if (!oldUrl) {
+        return;
+    }
+
+
+    iframe.attr(
         'src',
         ''
     );
 
-    setTimeout(() => {
-        $('#page-loader iframe').attr(
-            'src',
-            oldUrl
-        );
-    }, 10);
+
+    setTimeout(
+        function () {
+
+            iframe.attr(
+                'src',
+                fixGameUrl(oldUrl)
+            );
+
+        },
+        10
+    );
 }
 
 
@@ -825,52 +1507,85 @@ function refreshPage() {
    ========================================================= */
 
 function makecloak(
-    replaceUrl = preferences.cloakUrl
+    replaceUrl
 ) {
+
+    if (
+        typeof replaceUrl ===
+        'undefined'
+    ) {
+
+        replaceUrl =
+            preferences.cloakUrl;
+    }
+
+
     if (
         window.top.location.href !==
         'about:blank'
     ) {
+
         const url =
             window.location.href;
 
-        const win = window.open();
+
+        const win =
+            window.open();
+
 
         if (
             !win ||
             win.closed ||
-            typeof win.closed == 'undefined'
+            typeof win.closed ===
+            'undefined'
         ) {
             return;
         }
 
+
         win.document.body.style.margin =
             '0';
 
+
         win.document.body.style.height =
             '100vh';
+
 
         const iframe =
             win.document.createElement(
                 'iframe'
             );
 
-        iframe.style.border = 'none';
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.margin = '0';
 
-        iframe.referrerpolicy =
+        iframe.style.border =
+            'none';
+
+        iframe.style.width =
+            '100%';
+
+        iframe.style.height =
+            '100%';
+
+        iframe.style.margin =
+            '0';
+
+
+        iframe.referrerPolicy =
             'no-referrer';
 
-        iframe.allow = 'fullscreen';
+
+        iframe.allow =
+            'fullscreen';
+
 
         iframe.src =
-            url.toString();
+            url;
+
 
         win.document.body.appendChild(
             iframe
         );
+
 
         window.location.replace(
             replaceUrl
@@ -884,31 +1599,67 @@ function makecloak(
    ========================================================= */
 
 function mask(
-    title = preferences.maskTitle,
-    iconUrl = preferences.maskIconUrl
+    title,
+    iconUrl
 ) {
-    const e =
-        window.top.document;
 
-    e.title = title;
+    title =
+        title ||
+        preferences.maskTitle;
 
-    const link =
-        e.querySelector(
-            "link[rel*='icon']"
-        ) ||
-        document.createElement('link');
 
-    link.type =
-        'image/x-icon';
+    iconUrl =
+        iconUrl ||
+        preferences.maskIconUrl;
 
-    link.rel =
-        'shortcut icon';
 
-    link.href =
-        iconUrl;
+    try {
 
-    e.getElementsByTagName('head')[0]
-        .appendChild(link);
+        const e =
+            window.top.document;
+
+
+        e.title =
+            title;
+
+
+        let link =
+            e.querySelector(
+                "link[rel*='icon']"
+            );
+
+
+        if (!link) {
+
+            link =
+                e.createElement(
+                    'link'
+                );
+
+            e.head.appendChild(
+                link
+            );
+        }
+
+
+        link.type =
+            'image/x-icon';
+
+
+        link.rel =
+            'shortcut icon';
+
+
+        link.href =
+            iconUrl;
+
+    } catch (error) {
+
+        console.warn(
+            'Could not update mask:',
+            error
+        );
+    }
 }
 
 
@@ -917,24 +1668,32 @@ function mask(
    ========================================================= */
 
 function popupsAllowed() {
+
     const windowName =
         'userConsole';
 
-    const popUp = window.open(
-        '/popup-page.php',
-        windowName,
-        'width=1000, height=700, left=24, top=24, scrollbars, resizable'
-    );
+
+    const popUp =
+        window.open(
+            '/popup-page.php',
+            windowName,
+            'width=1000,height=700,left=24,top=24,scrollbars,resizable'
+        );
+
 
     if (
-        popUp == null ||
-        typeof popUp == 'undefined'
+        !popUp ||
+        popUp.closed
     ) {
+
         return false;
-    } else {
-        popUp.close();
-        return true;
     }
+
+
+    popUp.close();
+
+
+    return true;
 }
 
 
@@ -943,7 +1702,20 @@ function popupsAllowed() {
    ========================================================= */
 
 function toggleMute() {
-    // cant find working code rn
+
+    const media =
+        document.querySelectorAll(
+            'audio, video'
+        );
+
+
+    media.forEach(
+        function (element) {
+
+            element.muted =
+                !element.muted;
+        }
+    );
 }
 
 
@@ -952,10 +1724,15 @@ function toggleMute() {
    ========================================================= */
 
 function getMainSave() {
+
     let mainSave = {};
 
+
     let localStorageSave =
-        Object.entries(localStorage);
+        Object.entries(
+            localStorage
+        );
+
 
     localStorageSave =
         btoa(
@@ -964,22 +1741,32 @@ function getMainSave() {
             )
         );
 
+
     mainSave.localStorage =
         localStorageSave;
+
 
     let cookiesSave =
         document.cookie;
 
+
     cookiesSave =
-        btoa(cookiesSave);
+        btoa(
+            cookiesSave
+        );
+
 
     mainSave.cookies =
         cookiesSave;
 
+
     mainSave =
         btoa(
-            JSON.stringify(mainSave)
+            JSON.stringify(
+                mainSave
+            )
         );
+
 
     mainSave =
         CryptoJS.AES.encrypt(
@@ -987,35 +1774,66 @@ function getMainSave() {
             'save'
         ).toString();
 
+
     return mainSave;
 }
 
 
 function downloadMainSave() {
+
     const data =
-        new Blob([
-            getMainSave()
-        ]);
+        new Blob(
+            [
+                getMainSave()
+            ],
+            {
+                type:
+                    'text/plain'
+            }
+        );
+
 
     const dataURL =
-        URL.createObjectURL(data);
+        URL.createObjectURL(
+            data
+        );
+
 
     const fakeElement =
-        document.createElement('a');
+        document.createElement(
+            'a'
+        );
+
 
     fakeElement.href =
         dataURL;
 
+
     fakeElement.download =
         'monkey.data';
 
+
+    document.body.appendChild(
+        fakeElement
+    );
+
+
     fakeElement.click();
 
-    URL.revokeObjectURL(dataURL);
+
+    fakeElement.remove();
+
+
+    URL.revokeObjectURL(
+        dataURL
+    );
 }
 
 
-function getMainSaveFromUpload(data) {
+function getMainSaveFromUpload(
+    data
+) {
+
     data =
         CryptoJS.AES.decrypt(
             data,
@@ -1024,10 +1842,12 @@ function getMainSaveFromUpload(data) {
             CryptoJS.enc.Utf8
         );
 
+
     const mainSave =
         JSON.parse(
             atob(data)
         );
+
 
     const mainLocalStorageSave =
         JSON.parse(
@@ -1036,17 +1856,24 @@ function getMainSaveFromUpload(data) {
             )
         );
 
+
     const cookiesSave =
-        atob(mainSave.cookies);
+        atob(
+            mainSave.cookies
+        );
+
 
     for (
-        let item in mainLocalStorageSave
+        const item
+        of mainLocalStorageSave
     ) {
+
         localStorage.setItem(
-            mainLocalStorageSave[item][0],
-            mainLocalStorageSave[item][1]
+            item[0],
+            item[1]
         );
     }
+
 
     document.cookie =
         cookiesSave;
@@ -1054,64 +1881,105 @@ function getMainSaveFromUpload(data) {
 
 
 function uploadMainSave() {
+
     const hiddenUpload =
-        document.createElement('input');
+        document.createElement(
+            'input'
+        );
+
 
     hiddenUpload.type =
         'file';
 
+
     hiddenUpload.accept =
         '.data';
+
+
+    hiddenUpload.style.display =
+        'none';
+
 
     document.body.appendChild(
         hiddenUpload
     );
 
+
     hiddenUpload.click();
+
 
     hiddenUpload.addEventListener(
         'change',
-        function (e) {
-            const files =
-                e.target.files;
+        function (event) {
 
             const file =
-                files[0];
+                event.target.files[0];
+
 
             if (!file) {
+                hiddenUpload.remove();
                 return;
             }
+
 
             const reader =
                 new FileReader();
 
-            reader.onload =
-                function (e) {
-                    getMainSaveFromUpload(
-                        e.target.result
-                    );
 
-                    const uploadResult =
-                        document.querySelector(
-                            '.upload-result'
+            reader.onload =
+                function (event) {
+
+                    try {
+
+                        getMainSaveFromUpload(
+                            event.target.result
                         );
 
-                    uploadResult.innerText =
-                        'Uploaded save!';
 
-                    setTimeout(
-                        function () {
+                        const uploadResult =
+                            document.querySelector(
+                                '.upload-result'
+                            );
+
+
+                        if (
+                            uploadResult
+                        ) {
+
                             uploadResult.innerText =
-                                '';
-                        },
-                        3000
-                    );
+                                'Uploaded save!';
+
+
+                            setTimeout(
+                                function () {
+
+                                    uploadResult.innerText =
+                                        '';
+
+                                },
+                                3000
+                            );
+                        }
+
+                    } catch (error) {
+
+                        console.error(
+                            'Could not load save:',
+                            error
+                        );
+
+                        alert(
+                            'The save file could not be loaded.'
+                        );
+                    }
+
+
+                    hiddenUpload.remove();
                 };
 
-            reader.readAsText(file);
 
-            document.body.removeChild(
-                hiddenUpload
+            reader.readAsText(
+                file
             );
         }
     );
@@ -1122,17 +1990,29 @@ function uploadMainSave() {
    KEY CONFIG
    ========================================================= */
 
-const keyConfig =
-    JSON.parse(
-        localStorage.getItem(
-            'keyConfig'
-        )
-    ) || {};
+let keyConfig = {};
+
+
+try {
+
+    keyConfig =
+        JSON.parse(
+            localStorage.getItem(
+                'keyConfig'
+            )
+        ) || {};
+
+} catch (error) {
+
+    keyConfig = {};
+}
+
 
 const keySlots =
     document.querySelectorAll(
         '.keySlot'
     );
+
 
 const actions =
     document.querySelectorAll(
@@ -1141,74 +2021,105 @@ const actions =
 
 
 for (
-    var slot in keyConfig
+    const slot in keyConfig
 ) {
+
     if (
-        keyConfig.hasOwnProperty(slot)
+        !Object.prototype.hasOwnProperty.call(
+            keyConfig,
+            slot
+        )
     ) {
-        for (
-            var key in keyConfig[slot]
+        continue;
+    }
+
+
+    for (
+        const key in keyConfig[slot]
+    ) {
+
+        if (
+            !Object.prototype.hasOwnProperty.call(
+                keyConfig[slot],
+                key
+            )
         ) {
-            if (
-                keyConfig[slot]
-                    .hasOwnProperty(key)
+            continue;
+        }
+
+
+        const correctKey =
+            keyConfig[slot][key];
+
+
+        const slotDiv =
+            document.getElementById(
+                slot
+            );
+
+
+        if (!slotDiv) {
+            continue;
+        }
+
+
+        let displayKey =
+            key;
+
+
+        if (
+            key.includes(
+                'keySlot'
+            )
+        ) {
+
+            displayKey =
+                key.replace(
+                    /-/g,
+                    ' '
+                );
+        }
+
+
+        const keyElement =
+            slotDiv.getElementsByClassName(
+                displayKey
+            )[0];
+
+
+        if (!keyElement) {
+            continue;
+        }
+
+
+        if (
+            key !==
+            'slot-action'
+        ) {
+
+            keyElement.textContent =
+                correctKey;
+
+        } else {
+
+            for (
+                let i = 0;
+                i <
+                keyElement.options.length;
+                i++
             ) {
-                const correctKey =
-                    keyConfig[slot][key];
 
-                const slotDiv =
-                    document.getElementById(
-                        slot
-                    );
+                if (
+                    keyElement
+                        .options[i]
+                        .value ===
+                    correctKey
+                ) {
 
-                if (slotDiv) {
-                    let displayKey = key;
+                    keyElement.selectedIndex =
+                        i;
 
-                    if (
-                        key.includes(
-                            'keySlot'
-                        )
-                    ) {
-                        displayKey =
-                            key.replace(
-                                /-/g,
-                                ' '
-                            );
-                    }
-
-                    const keyElement =
-                        slotDiv.getElementsByClassName(
-                            displayKey
-                        )[0];
-
-                    if (keyElement) {
-                        if (
-                            key !=
-                            'slot-action'
-                        ) {
-                            keyElement.textContent =
-                                correctKey;
-                        } else {
-                            for (
-                                let i = 0;
-                                i <
-                                keyElement.options.length;
-                                i++
-                            ) {
-                                if (
-                                    keyElement
-                                        .options[i]
-                                        .value ===
-                                    correctKey
-                                ) {
-                                    keyElement.selectedIndex =
-                                        i;
-
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                    break;
                 }
             }
         }
@@ -1217,20 +2128,30 @@ for (
 
 
 actions.forEach(
-    (action) => {
+    function (action) {
+
         action.addEventListener(
             'change',
-            () => {
+            function () {
+
                 const slot =
                     action.parentNode.id;
 
-                if (!keyConfig[slot]) {
-                    keyConfig[slot] = {};
+
+                if (
+                    !keyConfig[slot]
+                ) {
+
+                    keyConfig[slot] =
+                        {};
                 }
+
 
                 keyConfig[slot][
                     'slot-action'
-                ] = action.value;
+                ] =
+                    action.value;
+
 
                 localStorage.setItem(
                     'keyConfig',
@@ -1245,47 +2166,58 @@ actions.forEach(
 
 
 keySlots.forEach(
-    (slot) => {
+    function (slot) {
+
         slot.addEventListener(
             'click',
-            () => {
+            function () {
+
                 slot.textContent =
                     'Press any key';
 
+
                 const keyPressHandler =
-                    (event) => {
+                    function (event) {
+
                         slot.textContent =
                             event.key;
+
 
                         document.removeEventListener(
                             'keydown',
                             keyPressHandler
                         );
 
-                        const parSlot =
-                            event.target
-                                .parentNode.id;
+
+                        const parentSlot =
+                            slot.parentNode.id;
+
 
                         if (
-                            !keyConfig[parSlot]
+                            !keyConfig[
+                                parentSlot
+                            ]
                         ) {
+
                             keyConfig[
-                                parSlot
+                                parentSlot
                             ] = {};
                         }
 
+
                         const key =
-                            event.target
-                                .className
+                            slot.className
                                 .replace(
                                     / /g,
                                     '-'
                                 );
 
+
                         keyConfig[
-                            parSlot
+                            parentSlot
                         ][key] =
                             event.key;
+
 
                         localStorage.setItem(
                             'keyConfig',
@@ -1294,6 +2226,7 @@ keySlots.forEach(
                             )
                         );
                     };
+
 
                 document.addEventListener(
                     'keydown',
@@ -1313,68 +2246,105 @@ const pressedKeys = {};
 
 
 function onKeyRelease(event) {
+
     const key =
         event.key.toLowerCase();
 
-    pressedKeys[key] = false;
+
+    pressedKeys[key] =
+        false;
 }
 
 
 function onKeyPress(event) {
+
     const key =
         event.key.toLowerCase();
 
-    pressedKeys[key] = true;
+
+    pressedKeys[key] =
+        true;
+
 
     for (
         const slot in keyConfig
     ) {
+
         if (
-            keyConfig.hasOwnProperty(slot)
+            !Object.prototype.hasOwnProperty.call(
+                keyConfig,
+                slot
+            )
         ) {
-            if (
-                keyConfig[slot][
-                    'keySlot-1'
-                ] &&
-                keyConfig[slot][
-                    'keySlot-2'
-                ] &&
-                keyConfig[slot][
-                    'slot-action'
-                ]
-            ) {
-                const key1Config =
-                    keyConfig[slot][
-                        'keySlot-1'
-                    ].toLowerCase();
+            continue;
+        }
 
-                const key2Config =
-                    keyConfig[slot][
-                        'keySlot-2'
-                    ].toLowerCase();
 
-                const key3Config =
-                    (
-                        keyConfig[slot][
-                            'keySlot-3'
-                        ] || ''
-                    ).toLowerCase();
+        const settings =
+            keyConfig[slot];
 
-                if (
-                    pressedKeys[key1Config] &&
-                    pressedKeys[key2Config] &&
-                    (
-                        key3Config
-                            ? pressedKeys[key3Config]
-                            : true
-                    )
-                ) {
-                    eval(
-                        keyConfig[slot][
-                            'slot-action'
-                        ]
-                    );
-                }
+
+        if (
+            !settings ||
+            !settings[
+                'keySlot-1'
+            ] ||
+            !settings[
+                'keySlot-2'
+            ] ||
+            !settings[
+                'slot-action'
+            ]
+        ) {
+            continue;
+        }
+
+
+        const key1 =
+            settings[
+                'keySlot-1'
+            ].toLowerCase();
+
+
+        const key2 =
+            settings[
+                'keySlot-2'
+            ].toLowerCase();
+
+
+        const key3 =
+            (
+                settings[
+                    'keySlot-3'
+                ] ||
+                ''
+            ).toLowerCase();
+
+
+        if (
+            pressedKeys[key1] &&
+            pressedKeys[key2] &&
+            (
+                key3
+                    ? pressedKeys[key3]
+                    : true
+            )
+        ) {
+
+            try {
+
+                eval(
+                    settings[
+                        'slot-action'
+                    ]
+                );
+
+            } catch (error) {
+
+                console.error(
+                    'Key action error:',
+                    error
+                );
             }
         }
     }
@@ -1386,6 +2356,7 @@ document.addEventListener(
     onKeyPress
 );
 
+
 document.addEventListener(
     'keyup',
     onKeyRelease
@@ -1396,37 +2367,107 @@ document.addEventListener(
    COLORS
    ========================================================= */
 
+/*
+ * IMPORTANT:
+ *
+ * input[type="color"] does NOT support #373737a6.
+ *
+ * Use normal 6-digit hex values.
+ */
+
 const defaultColorSettings = {
-    bg: '#202020',
-    'block-color': '#2b2b2b',
-    'button-color': '#373737',
-    'games-color': '#373737a6',
-    'hover-color': '#3c3c3c',
-    'scrollbar-color': '#434343',
-    'scroll-track-color': '#111',
-    'font-color': '#dcddde'
+
+    bg:
+        '#202020',
+
+    'block-color':
+        '#2b2b2b',
+
+    'button-color':
+        '#373737',
+
+    'games-color':
+        '#373737',
+
+    'hover-color':
+        '#3c3c3c',
+
+    'scrollbar-color':
+        '#434343',
+
+    'scroll-track-color':
+        '#111111',
+
+    'font-color':
+        '#dcddde'
 };
 
 
-const colorSettings =
-    JSON.parse(
-        localStorage.getItem(
-            'colorSettings'
-        )
-    ) ||
-    defaultColorSettings;
+let colorSettings;
+
+
+try {
+
+    colorSettings =
+        JSON.parse(
+            localStorage.getItem(
+                'colorSettings'
+            )
+        ) ||
+        {
+            ...defaultColorSettings
+        };
+
+} catch (error) {
+
+    colorSettings =
+        {
+            ...defaultColorSettings
+        };
+}
+
+
+/*
+ * Fix old invalid color values that may already
+ * exist in localStorage.
+ */
+
+Object.keys(
+    defaultColorSettings
+).forEach(
+    function (key) {
+
+        if (
+            !colorSettings[key] ||
+            !/^#[0-9a-fA-F]{6}$/.test(
+                colorSettings[key]
+            )
+        ) {
+
+            colorSettings[key] =
+                defaultColorSettings[key];
+        }
+    }
+);
 
 
 Object.keys(
     colorSettings
 ).forEach(
-    (key) => {
+    function (key) {
+
         const inputElement =
             document.getElementById(
                 key
             );
 
-        if (inputElement) {
+
+        if (
+            inputElement &&
+            inputElement.type ===
+            'color'
+        ) {
+
             inputElement.value =
                 colorSettings[key];
         }
@@ -1437,9 +2478,10 @@ Object.keys(
 Object.entries(
     colorSettings
 ).forEach(
-    ([key, value]) => {
+    function ([key, value]) {
+
         document.documentElement.style.setProperty(
-            `--${key}`,
+            '--' + key,
             value
         );
     }
@@ -1447,20 +2489,33 @@ Object.entries(
 
 
 function saveColorChanges() {
+
     const inputs =
         document.querySelectorAll(
             'input[type="color"]'
         );
 
+
     const newColorSettings = {};
 
+
     inputs.forEach(
-        (input) => {
-            newColorSettings[
-                input.id
-            ] = input.value;
+        function (input) {
+
+            if (
+                /^#[0-9a-fA-F]{6}$/.test(
+                    input.value
+                )
+            ) {
+
+                newColorSettings[
+                    input.id
+                ] =
+                    input.value;
+            }
         }
     );
+
 
     localStorage.setItem(
         'colorSettings',
@@ -1469,12 +2524,14 @@ function saveColorChanges() {
         )
     );
 
+
     Object.entries(
         newColorSettings
     ).forEach(
-        ([key, value]) => {
+        function ([key, value]) {
+
             document.documentElement.style.setProperty(
-                `--${key}`,
+                '--' + key,
                 value
             );
         }
@@ -1483,18 +2540,38 @@ function saveColorChanges() {
 
 
 function restoreColorChanges() {
+
     localStorage.removeItem(
         'colorSettings'
     );
 
+
     Object.entries(
         defaultColorSettings
     ).forEach(
-        ([key, value]) => {
+        function ([key, value]) {
+
             document.documentElement.style.setProperty(
-                `--${key}`,
+                '--' + key,
                 value
             );
+
+
+            const input =
+                document.getElementById(
+                    key
+                );
+
+
+            if (
+                input &&
+                input.type ===
+                'color'
+            ) {
+
+                input.value =
+                    value;
+            }
         }
     );
 }
@@ -1505,24 +2582,42 @@ function restoreColorChanges() {
    ========================================================= */
 
 function randomGame() {
-    const gameLinks =
-        document.querySelectorAll('#gamesList li');
 
-    if (!gameLinks.length) return;
+    const gameLinks =
+        document.querySelectorAll(
+            '#gamesList li'
+        );
+
+
+    if (
+        !gameLinks.length
+    ) {
+        return;
+    }
+
 
     const randomIndex =
-        Math.floor(Math.random() * gameLinks.length);
+        Math.floor(
+            Math.random() *
+            gameLinks.length
+        );
+
 
     const randomGameLink =
-        gameLinks[randomIndex];
+        gameLinks[
+            randomIndex
+        ];
 
-    const gameUrl = fixGameUrl(
-        randomGameLink.getAttribute('url')
+
+    const gameUrl =
+        randomGameLink.getAttribute(
+            'url'
+        );
+
+
+    openGameInNewTab(
+        gameUrl
     );
-
-    if (gameUrl) {
-        openGameInNewTab(gameUrl);
-    }
 }
 
 
@@ -1531,12 +2626,15 @@ function randomGame() {
    ========================================================= */
 
 const preferencesDefaults = {
-    cloak: true,
+
+    cloak:
+        true,
 
     cloakUrl:
         'https://classroom.google.com',
 
-    mask: true,
+    mask:
+        true,
 
     maskTitle:
         'Home',
@@ -1544,15 +2642,17 @@ const preferencesDefaults = {
     maskIconUrl:
         'https://ssl.gstatic.com/classroom/ic_product_classroom_32.png',
 
-    background: true
+    background:
+        true
 };
 
 
 if (
     localStorage.getItem(
         'preferences'
-    ) == null
+    ) === null
 ) {
+
     localStorage.setItem(
         'preferences',
         JSON.stringify(
@@ -1562,38 +2662,63 @@ if (
 }
 
 
-const preferences =
-    JSON.parse(
-        localStorage.getItem(
-            'preferences'
-        )
-    );
+let preferences;
 
+
+try {
+
+    preferences =
+        JSON.parse(
+            localStorage.getItem(
+                'preferences'
+            )
+        ) ||
+        {
+            ...preferencesDefaults
+        };
+
+} catch (error) {
+
+    preferences =
+        {
+            ...preferencesDefaults
+        };
+}
+
+
+/* =========================================================
+   PREFERENCE ELEMENTS
+   ========================================================= */
 
 const cloakCheckbox =
     document.getElementById(
         'cloakCheckboxInput'
     );
 
+
 const backgroundCheckbox =
     document.getElementById(
         'backgroundCheckboxInput'
     );
+
 
 const cloakUrl =
     document.getElementById(
         'cloakUrlInput'
     );
 
+
 const maskCheckbox =
     document.getElementById(
         'maskCheckboxInput'
     );
 
+
 const maskTitle =
     document.getElementById(
         'maskTitleInput'
     );
+
 
 const maskIcon =
     document.getElementById(
@@ -1601,23 +2726,46 @@ const maskIcon =
     );
 
 
-cloakCheckbox.checked =
-    preferences.cloak;
+if (cloakCheckbox) {
 
-cloakUrl.value =
-    preferences.cloakUrl;
+    cloakCheckbox.checked =
+        !!preferences.cloak;
+}
 
-maskCheckbox.checked =
-    preferences.mask;
 
-maskTitle.value =
-    preferences.maskTitle;
+if (cloakUrl) {
 
-maskIcon.value =
-    preferences.maskIconUrl;
+    cloakUrl.value =
+        preferences.cloakUrl || '';
+}
 
-backgroundCheckbox.checked =
-    preferences.background;
+
+if (maskCheckbox) {
+
+    maskCheckbox.checked =
+        !!preferences.mask;
+}
+
+
+if (maskTitle) {
+
+    maskTitle.value =
+        preferences.maskTitle || '';
+}
+
+
+if (maskIcon) {
+
+    maskIcon.value =
+        preferences.maskIconUrl || '';
+}
+
+
+if (backgroundCheckbox) {
+
+    backgroundCheckbox.checked =
+        !!preferences.background;
+}
 
 
 /* =========================================================
@@ -1625,38 +2773,54 @@ backgroundCheckbox.checked =
    ========================================================= */
 
 const presets = {
+
     classroom: {
+
         url:
             'https://classroom.google.com/',
+
         title:
             'Home',
+
         icon:
             'https://ssl.gstatic.com/classroom/ic_product_classroom_32.png'
     },
 
+
     drive: {
+
         url:
             'https://drive.google.com/',
+
         title:
             'My Drive - Google Drive',
+
         icon:
             'https://ssl.gstatic.com/images/branding/product/2x/hh_drive_36dp.png'
     },
 
+
     mail: {
+
         url:
             'https://mail.google.com/',
+
         title:
             'Inbox (12) - Google Mail',
+
         icon:
             'https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_512dp.png'
     },
 
+
     canvas: {
+
         url:
             'https://www.instructure.com/',
+
         title:
             'Dashboard',
+
         icon:
             'https://du11hjcvx0uqb.cloudfront.net/dist/images/favicon-e10d657a73.ico'
     }
@@ -1664,14 +2828,23 @@ const presets = {
 
 
 function setPreset(object) {
+
+    if (!object) {
+        return;
+    }
+
+
     preferences.cloakUrl =
         object.url;
+
 
     preferences.maskTitle =
         object.title;
 
+
     preferences.maskIconUrl =
         object.icon;
+
 
     localStorage.setItem(
         'preferences',
@@ -1680,6 +2853,7 @@ function setPreset(object) {
         )
     );
 
+
     alert(
         'Preset will take place upon next opening!'
     );
@@ -1687,12 +2861,256 @@ function setPreset(object) {
 
 
 function updatePreset() {
+
+    const presetsElement =
+        document.getElementById(
+            'presets'
+        );
+
+
+    if (!presetsElement) {
+        return;
+    }
+
+
     setPreset(
         presets[
-            document.getElementById(
-                'presets'
-            ).value
+            presetsElement.value
         ]
+    );
+}
+
+
+/* =========================================================
+   SETTINGS EVENTS
+   ========================================================= */
+
+if (maskCheckbox) {
+
+    maskCheckbox.addEventListener(
+        'change',
+        function () {
+
+            preferences.mask =
+                maskCheckbox.checked;
+
+
+            localStorage.setItem(
+                'preferences',
+                JSON.stringify(
+                    preferences
+                )
+            );
+        }
+    );
+}
+
+
+if (cloakCheckbox) {
+
+    cloakCheckbox.addEventListener(
+        'change',
+        function () {
+
+            preferences.cloak =
+                cloakCheckbox.checked;
+
+
+            localStorage.setItem(
+                'preferences',
+                JSON.stringify(
+                    preferences
+                )
+            );
+        }
+    );
+}
+
+
+if (backgroundCheckbox) {
+
+    backgroundCheckbox.addEventListener(
+        'change',
+        function () {
+
+            preferences.background =
+                backgroundCheckbox.checked;
+
+
+            localStorage.setItem(
+                'preferences',
+                JSON.stringify(
+                    preferences
+                )
+            );
+
+
+            if (
+                typeof inGame !==
+                'undefined'
+            ) {
+
+                inGame =
+                    !preferences.background;
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   CLOAK URL
+   ========================================================= */
+
+const cloakUrlSubmit =
+    document.getElementById(
+        'cloakUrlSubmit'
+    );
+
+
+if (cloakUrlSubmit) {
+
+    cloakUrlSubmit.addEventListener(
+        'click',
+        function () {
+
+            if (!cloakUrl) {
+                return;
+            }
+
+
+            preferences.cloakUrl =
+                cloakUrl.value;
+
+
+            localStorage.setItem(
+                'preferences',
+                JSON.stringify(
+                    preferences
+                )
+            );
+
+
+            alert(
+                'Submitted! Change will take place upon refresh'
+            );
+        }
+    );
+}
+
+
+/* =========================================================
+   MASK TITLE
+   ========================================================= */
+
+const maskTitleSubmit =
+    document.getElementById(
+        'maskTitleSubmit'
+    );
+
+
+if (maskTitleSubmit) {
+
+    maskTitleSubmit.addEventListener(
+        'click',
+        function () {
+
+            if (!maskTitle) {
+                return;
+            }
+
+
+            preferences.maskTitle =
+                maskTitle.value;
+
+
+            localStorage.setItem(
+                'preferences',
+                JSON.stringify(
+                    preferences
+                )
+            );
+
+
+            alert(
+                'Submitted! Change will take place upon refresh'
+            );
+        }
+    );
+}
+
+
+/* =========================================================
+   MASK ICON
+   ========================================================= */
+
+const maskIconSubmit =
+    document.getElementById(
+        'maskIconSubmit'
+    );
+
+
+if (maskIconSubmit) {
+
+    maskIconSubmit.addEventListener(
+        'click',
+        function () {
+
+            if (!maskIcon) {
+                return;
+            }
+
+
+            preferences.maskIconUrl =
+                maskIcon.value;
+
+
+            localStorage.setItem(
+                'preferences',
+                JSON.stringify(
+                    preferences
+                )
+            );
+
+
+            alert(
+                'Submitted! Change will take place upon refresh'
+            );
+        }
+    );
+}
+
+
+/* =========================================================
+   DOWNLOAD / UPLOAD BUTTONS
+   ========================================================= */
+
+const downloadButton =
+    document.getElementById(
+        'download'
+    );
+
+
+if (downloadButton) {
+
+    downloadButton.addEventListener(
+        'click',
+        downloadMainSave
+    );
+}
+
+
+const uploadButton =
+    document.getElementById(
+        'upload'
+    );
+
+
+if (uploadButton) {
+
+    uploadButton.addEventListener(
+        'click',
+        uploadMainSave
     );
 }
 
@@ -1703,51 +3121,73 @@ function updatePreset() {
 
 if (
     preferences.cloak &&
-    window.location.href ==
+    window.location.href ===
     window.top.location.href
 ) {
-    if (popupsAllowed()) {
+
+    if (
+        popupsAllowed()
+    ) {
+
         makecloak();
+
     } else {
+
         currentMenu.fadeOut(
             300,
-            () => {
+            function () {
+
                 $('.cloaklaunch')
                     .fadeIn(200);
             }
         );
 
+
         currentMenu =
             $('.cloaklaunch');
 
+
         document.addEventListener(
             'click',
-            (event) => {
+            function (event) {
+
                 if (
-                    event.target.id ==
+                    event.target.id ===
                     'disableCloak'
                 ) {
+
                     $('.cloaklaunch')
                         .fadeOut(200);
+
 
                     setTimeout(
                         returnHome,
                         200
                     );
 
+
                     return;
                 }
 
+
+                const target =
+                    event.target;
+
+
                 if (
-                    event.target.className !=
-                        'cloaklaunch' &&
-                    event.target.className !=
+                    !target.classList.contains(
+                        'cloaklaunch'
+                    ) &&
+                    !target.classList.contains(
                         'cloaker'
+                    )
                 ) {
                     return;
                 }
 
+
                 event.preventDefault();
+
 
                 makecloak();
             }
@@ -1757,166 +3197,23 @@ if (
 
 
 /* =========================================================
-   SETTINGS EVENTS
-   ========================================================= */
-
-maskCheckbox.addEventListener(
-    'change',
-    function () {
-        preferences.mask =
-            maskCheckbox.checked;
-
-        localStorage.setItem(
-            'preferences',
-            JSON.stringify(
-                preferences
-            )
-        );
-    }
-);
-
-
-cloakCheckbox.addEventListener(
-    'change',
-    function () {
-        preferences.cloak =
-            cloakCheckbox.checked;
-
-        localStorage.setItem(
-            'preferences',
-            JSON.stringify(
-                preferences
-            )
-        );
-    }
-);
-
-
-backgroundCheckbox.addEventListener(
-    'change',
-    function () {
-        preferences.background =
-            backgroundCheckbox.checked;
-
-        localStorage.setItem(
-            'preferences',
-            JSON.stringify(
-                preferences
-            )
-        );
-
-        inGame =
-            !preferences.background;
-    }
-);
-
-
-/* =========================================================
-   CLOAK URL
-   ========================================================= */
-
-document
-    .getElementById('cloakUrlSubmit')
-    .addEventListener(
-        'click',
-        function () {
-            preferences.cloakUrl =
-                cloakUrl.value;
-
-            localStorage.setItem(
-                'preferences',
-                JSON.stringify(
-                    preferences
-                )
-            );
-
-            alert(
-                'Submitted! Change will take place upon refresh'
-            );
-        }
-    );
-
-
-/* =========================================================
-   MASK TITLE
-   ========================================================= */
-
-document
-    .getElementById('maskTitleSubmit')
-    .addEventListener(
-        'click',
-        function () {
-            preferences.maskTitle =
-                maskTitle.value;
-
-            localStorage.setItem(
-                'preferences',
-                JSON.stringify(
-                    preferences
-                )
-            );
-
-            alert(
-                'Submitted! Change will take place upon refresh'
-            );
-        }
-    );
-
-
-/* =========================================================
-   MASK ICON
-   ========================================================= */
-
-document
-    .getElementById('maskIconSubmit')
-    .addEventListener(
-        'click',
-        function () {
-            preferences.maskIconUrl =
-                maskIcon.value;
-
-            localStorage.setItem(
-                'preferences',
-                JSON.stringify(
-                    preferences
-                )
-            );
-
-            alert(
-                'Submitted! Change will take place upon refresh'
-            );
-        }
-    );
-
-
-/* =========================================================
-   DOWNLOAD / UPLOAD
-   ========================================================= */
-
-document
-    .getElementById('download')
-    .addEventListener(
-        'click',
-        function () {
-            downloadMainSave();
-        }
-    );
-
-
-document
-    .getElementById('upload')
-    .addEventListener(
-        'click',
-        function () {
-            uploadMainSave();
-        }
-    );
-
-
-/* =========================================================
    MASK STARTUP
    ========================================================= */
 
-if (preferences.mask) {
+if (
+    preferences.mask
+) {
+
     mask();
 }
+
+
+/* =========================================================
+   INITIAL GAME LIST UPDATE
+   ========================================================= */
+
+$(function () {
+
+    updateList();
+
+});
