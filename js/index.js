@@ -8,7 +8,6 @@
 
 let currentMenu = $('.homepage');
 
-let inGame = false;
 
 
 /* =========================================================
