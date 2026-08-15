@@ -231,6 +231,7 @@ function openGameInNewTab(gameUrl) {
             '_blank'
         );
 
+    window.location.href = '/games';
 
     /*
      * If popup blocking prevents the tab from opening,
