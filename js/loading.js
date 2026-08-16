@@ -1,6 +1,6 @@
 function changeLoadingTip() {
     const tips = [
-        'mb for this, type / on the end of the url, it will then load',
+        '',
     ];
     const element = document.getElementsByClassName('loading-tip')[0];
 
