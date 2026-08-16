@@ -2049,8 +2049,8 @@ localStorage.setItem(
     'preferences',
     JSON.stringify(
         preferences
-    );
-
+    )
+);
 
 /* =========================================================
    PREFERENCE INPUTS
