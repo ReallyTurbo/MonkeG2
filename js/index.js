@@ -75,34 +75,79 @@ function fixGameUrl(url) {
     url = url.replace(/\u3000/g, '');
 
     /*
-     * Eaglercraft special case.
+     * =====================================================
+     * EAGLERCRAFT FIX
+     * =====================================================
      *
-     * Eaglercraft versions such as:
-     *
-     * /games/ampler-launcher/mc/1.5.2
-     * /games/ampler-launcher/mc/1.8.8
-     * /games/ampler-launcher/mc/1.12.2
-     *
-     * are DIRECTORIES, not files.
-     *
-     * Therefore they MUST end with /.
+     * These are directories, so they MUST end with /.
      */
-    if (
-        url.includes('/games/ampler-launcher/mc/') &&
-        !url.endsWith('/')
-    ) {
-        url += '/';
 
-        console.log(
-            '[EAGLERCRAFT] Added trailing slash:',
-            url
-        );
+    const eaglercraftGames = {
+        'https://monkegg2.onrender.com/games/ampler-launcher/mc/1.5.2':
+            'https://monkegg2.onrender.com/games/ampler-launcher/mc/1.5.2/',
 
-        return url;
-    }
+        'https://monkegg2.onrender.com/games/ampler-launcher/mc/1.12.2':
+            'https://monkegg2.onrender.com/games/ampler-launcher/mc/1.12.2/',
+
+        'https://monkegg2.onrender.com/games/ampler-launcher/mc/1.8.8':
+            'https://monkegg2.onrender.com/games/ampler-launcher/mc/1.8.8/'
+    };
+
 
     /*
-     * Absolute URLs.
+     * Check exact Eaglercraft URLs first.
+     */
+    if (
+        eaglercraftGames[url]
+    ) {
+
+        console.log(
+            '[EAGLERCRAFT] Fixed:',
+            eaglercraftGames[url]
+        );
+
+        return eaglercraftGames[url];
+    }
+
+
+    /*
+     * Also handle the relative versions from the
+     * games list.
+     */
+
+    const eaglercraftRelativeGames = {
+        '/games/ampler-launcher/mc/1.5.2':
+            '/games/ampler-launcher/mc/1.5.2/',
+
+        '/games/ampler-launcher/mc/1.12.2':
+            '/games/ampler-launcher/mc/1.12.2/',
+
+        '/games/ampler-launcher/mc/1.8.8':
+            '/games/ampler-launcher/mc/1.8.8/'
+    };
+
+
+    if (
+        eaglercraftRelativeGames[url]
+    ) {
+
+        console.log(
+            '[EAGLERCRAFT] Fixed relative:',
+            eaglercraftRelativeGames[url]
+        );
+
+        return eaglercraftRelativeGames[url];
+    }
+
+
+    /*
+     * =====================================================
+     * NORMAL URL HANDLING
+     * =====================================================
+     */
+
+    /*
+     * Absolute URLs
      */
     if (
         url.startsWith('http://') ||
@@ -111,34 +156,10 @@ function fixGameUrl(url) {
 
         try {
 
-            const parsed = new URL(url);
-
-            /*
-             * Eaglercraft absolute URL.
-             */
-            if (
-                parsed.pathname.includes(
-                    '/games/ampler-launcher/mc/'
-                ) &&
-                !parsed.pathname.endsWith('/')
-            ) {
-
-                parsed.pathname += '/';
-
-                console.log(
-                    '[EAGLERCRAFT] Fixed absolute URL:',
-                    parsed.toString()
-                );
-
-                return parsed.toString();
-            }
+            const parsed =
+                new URL(url);
 
 
-            /*
-             * Other local game directories.
-             *
-             * Known file extensions are treated as files.
-             */
             if (
                 parsed.pathname.startsWith('/games/') &&
                 !parsed.pathname.endsWith('/')
@@ -181,12 +202,12 @@ function fixGameUrl(url) {
                             return lastPart
                                 .toLowerCase()
                                 .endsWith(extension);
-
                         }
                     );
 
 
                 if (!isFile) {
+
                     parsed.pathname += '/';
                 }
             }
@@ -208,9 +229,11 @@ function fixGameUrl(url) {
 
 
     /*
-     * Relative game URLs.
+     * Relative game URLs
      */
-    if (url.startsWith('/games/')) {
+    if (
+        url.startsWith('/games/')
+    ) {
 
         const lastPart =
             url.substring(
@@ -249,7 +272,6 @@ function fixGameUrl(url) {
                     return lastPart
                         .toLowerCase()
                         .endsWith(extension);
-
                 }
             );
 
@@ -258,6 +280,7 @@ function fixGameUrl(url) {
             !isFile &&
             !url.endsWith('/')
         ) {
+
             url += '/';
         }
     }
