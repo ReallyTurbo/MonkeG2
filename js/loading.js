@@ -1,12 +1,6 @@
 function changeLoadingTip() {
     const tips = [
-        'Welcome to the land of Nothing!',
-        'Here there is absolutely nothing for you.',
-        'Just gotta wait for it to load',
-        "Shouldn't take any longer",
-        'Why are you here?',
-        'Just one more minute',
-        'Go read a book :)',
+        'mb for this, type / on the end of the url, it will then load',
     ];
     const element = document.getElementsByClassName('loading-tip')[0];
 
