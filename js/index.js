@@ -2827,15 +2827,14 @@ const preferencesDefaults = {
         true,
 
     maskTitle:
-        'Home',
+        'Google Maps',
 
     maskIconUrl:
-        'https://ssl.gstatic.com/classroom/ic_product_classroom_32.png',
+        'https://www.google.com/images/branding/product/ico/googleg_lodp.ico',
 
     background:
-        true
+        false
 };
-
 
 let preferences;
 
