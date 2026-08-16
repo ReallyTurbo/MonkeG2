@@ -37,6 +37,11 @@ function onInput(selector, callback) {
     }
 }
 
+function goToGames() {
+    currentMenu.hide();
+    $('.games').show();
+    currentMenu = $('.games');
+}
 
 /* =========================================================
    GAME URL FIX
@@ -221,7 +226,8 @@ function openGameInNewTab(gameUrl) {
             '_blank'
         );
 
-
+     goToGames();
+   
     /*
      * If popup blocking prevents the tab from opening,
      * don't change the current page.
