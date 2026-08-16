@@ -2049,7 +2049,8 @@ localStorage.setItem(
     'preferences',
     JSON.stringify(
         preferences
-    );
+    )
+);
 
 
 /* =========================================================
