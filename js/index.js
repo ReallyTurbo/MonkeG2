@@ -1,1092 +1,414 @@
-/* =========================================================
-   SCHOOL TERMINAL - MAIN SCRIPT
-   ========================================================= */
+let currentMenu = $('.homepage');
 
-/* =========================================================
-   GLOBALS
-   ========================================================= */
-
-let currentMenu =
-    $('.games');
-
-
-/*
- * Do NOT declare `inGame` here.
- *
- * Your existing bg.js / loading.js system owns it.
- */
-
-
-/* =========================================================
-   SAFE EVENT HELPERS
-   ========================================================= */
-
-function onClick(
-    selector,
-    callback
-) {
-
-    document.addEventListener(
-        'click',
-        function (event) {
-
-            const target =
-                event.target.closest(
-                    selector
-                );
-
-            if (!target) {
-                return;
-            }
-
-            if (
-                typeof callback ===
-                'function'
-            ) {
-
-                callback.call(
-                    target,
-                    event
-                );
-            }
-        }
-    );
-}
-
-
-function onChange(
-    selector,
-    callback
-) {
-
-    document.addEventListener(
-        'change',
-        function (event) {
-
-            if (
-                !event.target.matches(
-                    selector
-                )
-            ) {
-
-                return;
-            }
-
-            if (
-                typeof callback ===
-                'function'
-            ) {
-
-                callback.call(
-                    event.target,
-                    event
-                );
-            }
-        }
-    );
-}
-
-
-function onInput(
-    selector,
-    callback
-) {
-
-    document.addEventListener(
-        'input',
-        function (event) {
-
-            if (
-                !event.target.matches(
-                    selector
-                )
-            ) {
-
-                return;
-            }
-
-            if (
-                typeof callback ===
-                'function'
-            ) {
-
-                callback.call(
-                    event.target,
-                    event
-                );
-            }
-        }
-    );
-}
-
+let games = [];
+let pressedKeys = {};
+let keybinds = [];
 
 /* =========================================================
    MENU NAVIGATION
    ========================================================= */
 
-function showMenu(
-    menu
-) {
-
-    $('.homepage').hide();
-    $('.games').hide();
-    $('.settings').hide();
-    $('#page-loader').hide();
-
-    if (
-        menu &&
-        menu.length
-    ) {
-
-        menu.show();
-
-        currentMenu =
-            menu;
-    }
+function showMenu(menu) {
+    $('.homepage, .games, .settings').hide();
+    $(menu).show();
+    currentMenu = $(menu);
 }
 
+$('.column button .card').on('click', function () {
+    const nextMenu = $(this).attr('data');
 
-function goToGames() {
-
-    showMenu(
-        $('.games')
-    );
-
-    if (
-        typeof inGame !==
-        'undefined'
-    ) {
-
-        inGame =
-            false;
+    if (nextMenu === 'games') {
+        showMenu('.games');
     }
 
-    document
-        .querySelectorAll(
-            '.portal-nav-button'
-        )
-        .forEach(
-            function (button) {
+    else if (nextMenu === 'settings') {
+        showMenu('.settings');
+    }
 
-                button.classList.toggle(
-                    'active',
-                    button.getAttribute(
-                        'data-nav'
-                    ) === 'games'
-                );
+    else if (nextMenu === 'proxy') {
+        if (
+            typeof config !== 'undefined' &&
+            config.proxy
+        ) {
+            window.open(config.proxy, '_blank');
+        }
+        else {
+            const disabled = document.getElementById('disabled');
+
+            if (disabled) {
+                disabled.showModal();
             }
-        );
+        }
+    }
+});
+
+
+/* =========================================================
+   RETURN HOME
+   ========================================================= */
+
+function returnHome() {
+    $('.games, .settings').hide();
+    $('.homepage').show();
+
+    currentMenu = $('.homepage');
 }
 
 
-function goToSettings() {
+/* =========================================================
+   GAME DATA
+   ========================================================= */
 
-    showMenu(
-        $('.settings')
-    );
+function getGameData() {
+    /*
+     * MonkeyGG2 normally stores the game information
+     * inside config.js.
+     */
 
-    document
-        .querySelectorAll(
-            '.portal-nav-button'
-        )
-        .forEach(
-            function (button) {
+    if (
+        typeof config !== 'undefined' &&
+        Array.isArray(config.games)
+    ) {
+        return config.games;
+    }
 
-                button.classList.remove(
-                    'active'
-                );
-            }
-        );
+    /*
+     * Some versions of the site use config["games"].
+     */
+
+    if (
+        typeof config !== 'undefined' &&
+        config['games'] &&
+        Array.isArray(config['games'])
+    ) {
+        return config['games'];
+    }
+
+    return [];
 }
 
 
-function goToHome() {
+/* =========================================================
+   LOAD GAMES
+   ========================================================= */
 
-    showMenu(
-        $('.homepage')
+function loadGames() {
+    games = getGameData();
+
+    displayGames();
+}
+
+
+/* =========================================================
+   GET GAME NAME
+   ========================================================= */
+
+function getGameName(game) {
+    if (typeof game === 'string') {
+        return game;
+    }
+
+    if (!game) {
+        return 'Game';
+    }
+
+    return (
+        game.name ||
+        game.title ||
+        game.text ||
+        game.game ||
+        'Game'
     );
 }
 
 
 /* =========================================================
-   GAME URL FIX
+   GET GAME URL
    ========================================================= */
 
-function fixGameUrl(
-    url
-) {
+function getGameURL(game) {
+    if (typeof game === 'string') {
+        return game;
+    }
 
+    if (!game) {
+        return '';
+    }
+
+    return (
+        game.url ||
+        game.link ||
+        game.path ||
+        game.href ||
+        ''
+    );
+}
+
+
+/* =========================================================
+   FIX GAME URL
+   ========================================================= */
+
+function fixGameURL(url) {
     if (!url) {
-        return url;
+        return '';
     }
 
-    url =
-        String(
+    let gameUrl = String(url).trim();
+
+    /*
+     * Remove accidental whitespace.
+     */
+
+    gameUrl = gameUrl.replace(/\s+/g, '');
+
+
+    /*
+     * Eaglercraft / directory-based games need
+     * the trailing slash.
+     *
+     * Example:
+     *
+     * /games/ampler-launcher/mc/1.5.2
+     *
+     * becomes:
+     *
+     * /games/ampler-launcher/mc/1.5.2/
+     */
+
+    if (
+        gameUrl.includes('/games/ampler-launcher/mc/') &&
+        !gameUrl.endsWith('/')
+    ) {
+        gameUrl += '/';
+    }
+
+
+    /*
+     * Other directory-style game URLs.
+     *
+     * Don't add a slash to actual files such as:
+     *
+     * game.html
+     * index.html
+     * game.js
+     * game.swf
+     */
+
+    if (
+        !gameUrl.endsWith('/') &&
+        !gameUrl.includes('?') &&
+        !gameUrl.includes('#') &&
+        !/\.[a-zA-Z0-9]{2,6}$/.test(gameUrl)
+    ) {
+        gameUrl += '/';
+    }
+
+    return gameUrl;
+}
+
+
+/* =========================================================
+   DISPLAY GAMES
+   ========================================================= */
+
+function displayGames() {
+    const list = $('#gamesList');
+
+    if (!list.length) {
+        return;
+    }
+
+    list.empty();
+
+    const searchValue =
+        String($('#search').val() || '')
+            .toLowerCase()
+            .trim();
+
+    const sortType =
+        $('#sort').val() || 'alphabetical';
+
+
+    let filteredGames = games.filter(function (game) {
+
+        const name =
+            getGameName(game)
+                .toLowerCase();
+
+        return name.includes(searchValue);
+    });
+
+
+    filteredGames.sort(function (a, b) {
+
+        const nameA =
+            getGameName(a);
+
+        const nameB =
+            getGameName(b);
+
+        return nameA.localeCompare(nameB);
+    });
+
+
+    if (sortType === 'reverse') {
+        filteredGames.reverse();
+    }
+
+
+    filteredGames.forEach(function (game) {
+
+        const name =
+            getGameName(game);
+
+        const url =
+            fixGameURL(
+                getGameURL(game)
+            );
+
+
+        /*
+         * Create the same kind of <li>
+         * that your existing index.html expects.
+         */
+
+        const li =
+            $('<li></li>');
+
+        const button =
+            $('<button></button>');
+
+
+        button.attr(
+            'type',
+            'button'
+        );
+
+
+        button.text(name);
+
+
+        /*
+         * Store the URL directly on the LI.
+         */
+
+        li.attr(
+            'url',
             url
-        ).trim();
-
-
-    url =
-        url.replace(
-            /\u3000/g,
-            ''
         );
 
 
-    /*
-     * =====================================================
-     * EAGLERCRAFT
-     * =====================================================
-     */
+        /*
+         * Also store it on the button.
+         * This makes the click handler more reliable.
+         */
 
-    const eaglercraftPaths = [
-        'games/ampler-launcher/mc/1.5.2',
-        'games/ampler-launcher/mc/1.8.8',
-        'games/ampler-launcher/mc/1.12.2',
-
-        '/games/ampler-launcher/mc/1.5.2',
-        '/games/ampler-launcher/mc/1.8.8',
-        '/games/ampler-launcher/mc/1.12.2'
-    ];
+        button.attr(
+            'data-url',
+            url
+        );
 
 
-    for (
-        const eaglerPath of
-        eaglercraftPaths
-    ) {
+        li.append(button);
 
-        if (
-            url ===
-            eaglerPath
-        ) {
-
-            if (
-                !url.endsWith('/')
-            ) {
-
-                url += '/';
-            }
-
-            console.log(
-                '[EAGLERCRAFT] Fixed:',
-                url
-            );
-
-            return url;
-        }
-    }
-
-
-    /*
-     * Absolute URL.
-     */
-
-    if (
-        url.startsWith(
-            'http://'
-        ) ||
-        url.startsWith(
-            'https://'
-        )
-    ) {
-
-        try {
-
-            const parsed =
-                new URL(
-                    url
-                );
-
-            if (
-                parsed.pathname.startsWith(
-                    '/games/'
-                ) &&
-                !parsed.pathname.endsWith(
-                    '/'
-                )
-            ) {
-
-                const lastPart =
-                    parsed.pathname.substring(
-                        parsed.pathname.lastIndexOf(
-                            '/'
-                        ) + 1
-                    );
-
-
-                const knownFiles = [
-                    '.html',
-                    '.htm',
-                    '.js',
-                    '.css',
-                    '.json',
-                    '.png',
-                    '.jpg',
-                    '.jpeg',
-                    '.gif',
-                    '.webp',
-                    '.svg',
-                    '.ico',
-                    '.mp3',
-                    '.wav',
-                    '.ogg',
-                    '.mp4',
-                    '.webm',
-                    '.wasm',
-                    '.xml',
-                    '.txt'
-                ];
-
-
-                const isFile =
-                    knownFiles.some(
-                        function (
-                            extension
-                        ) {
-
-                            return lastPart
-                                .toLowerCase()
-                                .endsWith(
-                                    extension
-                                );
-                        }
-                    );
-
-
-                if (!isFile) {
-
-                    parsed.pathname +=
-                        '/';
-                }
-            }
-
-            return parsed.toString();
-
-        } catch (error) {
-
-            console.error(
-                'Invalid absolute game URL:',
-                url,
-                error
-            );
-
-            return url;
-        }
-    }
-
-
-    /*
-     * Relative URL.
-     */
-
-    if (
-        url.startsWith(
-            'games/'
-        )
-    ) {
-
-        url =
-            '/' +
-            url;
-    }
-
-
-    if (
-        url.startsWith(
-            '/games/'
-        ) &&
-        !url.endsWith(
-            '/'
-        )
-    ) {
-
-        const lastPart =
-            url.substring(
-                url.lastIndexOf(
-                    '/'
-                ) + 1
-            );
-
-
-        const knownFiles = [
-            '.html',
-            '.htm',
-            '.js',
-            '.css',
-            '.json',
-            '.png',
-            '.jpg',
-            '.jpeg',
-            '.gif',
-            '.webp',
-            '.svg',
-            '.ico',
-            '.mp3',
-            '.wav',
-            '.ogg',
-            '.mp4',
-            '.webm',
-            '.wasm',
-            '.xml',
-            '.txt'
-        ];
-
-
-        const isFile =
-            knownFiles.some(
-                function (
-                    extension
-                ) {
-
-                    return lastPart
-                        .toLowerCase()
-                        .endsWith(
-                            extension
-                        );
-                }
-            );
-
-
-        if (!isFile) {
-
-            url += '/';
-        }
-    }
-
-
-    return url;
+        list.append(li);
+    });
 }
 
 
 /* =========================================================
-   OPEN GAME
+   GAME CLICK HANDLER
    ========================================================= */
 
-function openGameInNewTab(
-    gameUrl,
-    gameName
-) {
-
-    if (!gameUrl) {
-        return;
-    }
-
-
-    gameUrl =
-        fixGameUrl(
-            gameUrl
-        );
-
-
-    let fullUrl;
-
-
-    try {
-
-        fullUrl =
-            new URL(
-                gameUrl,
-                window.location.origin
-            ).href;
-
-    } catch (error) {
-
-        console.error(
-            'Could not create game URL:',
-            gameUrl,
-            error
-        );
-
-        return;
-    }
-
-
-    /*
-     * Final trailing slash safety check.
-     */
-
-    try {
-
-        const parsed =
-            new URL(
-                fullUrl
-            );
-
-        if (
-            parsed.pathname.startsWith(
-                '/games/'
-            ) &&
-            !parsed.pathname.endsWith(
-                '/'
-            )
-        ) {
-
-            const lastPart =
-                parsed.pathname.substring(
-                    parsed.pathname.lastIndexOf(
-                        '/'
-                    ) + 1
-                );
-
-            if (
-                !lastPart.includes(
-                    '.'
-                )
-            ) {
-
-                parsed.pathname +=
-                    '/';
-            }
-        }
-
-        fullUrl =
-            parsed.href;
-
-    } catch (error) {
-
-        console.warn(
-            'Could not normalize URL:',
-            fullUrl
-        );
-    }
-
-
-    console.log(
-        'Opening game:',
-        fullUrl
-    );
-
-
-    /*
-     * Remember game.
-     */
-
-    if (
-        gameName &&
-        typeof saveRecentlyPlayed ===
-        'function'
-    ) {
-
-        saveRecentlyPlayed(
-            gameName
-        );
-    }
-
-
-    /*
-     * Open new tab FIRST.
-     */
-
-    const newTab =
-        window.open(
-            fullUrl,
-            '_blank'
-        );
-
-
-    if (!newTab) {
-
-        alert(
-            'Your browser blocked the new game tab. Please allow popups for this site.'
-        );
-
-        return;
-    }
-
-
-    /*
-     * Prevent opener behavior.
-     */
-
-    try {
-
-        newTab.opener =
-            null;
-
-    } catch (error) {
-
-        // Ignore.
-    }
-
-
-    /*
-     * Original tab stays on the Games menu.
-     */
-
-    goToGames();
-}
-
-
-/* =========================================================
-   GAME FROM GENERATED CARD
-   ========================================================= */
-
-window.openGameFromCard =
-    function (
-        gameName,
-        gameData
-    ) {
-
-        if (
-            !gameData
-        ) {
-
-            return;
-        }
-
-
-        const path =
-            String(
-                gameData.path || ''
-            ).replace(
-                /^\/+/,
-                ''
-            );
-
-
-        if (!path) {
-            return;
-        }
-
-
-        openGameInNewTab(
-            'games/' + path,
-            gameName
-        );
-    };
-
-
-/* =========================================================
-   ORIGINAL GAME LIST
-   ========================================================= */
+/*
+ * IMPORTANT:
+ *
+ * We DO NOT use:
+ *
+ * #page-loader iframe
+ *
+ * anymore.
+ *
+ * The game opens directly in a new tab.
+ */
 
 $(document).on(
     'click',
-    '#gamesList li',
+    '#gamesList li, #gamesList li button',
     function (event) {
 
         event.preventDefault();
         event.stopPropagation();
 
 
-        const item =
-            this;
-
-        const gameUrl =
-            fixGameUrl(
-                item.getAttribute(
-                    'url'
-                )
-            );
+        const li =
+            $(this).closest('li');
 
 
-        const gameName =
-            item.getAttribute(
-                'game-name'
-            ) ||
-            item.textContent
-                .replace(
-                    '☆',
-                    ''
-                )
-                .replace(
-                    '★',
-                    ''
-                )
-                .trim();
+        let gameUrl =
+            li.attr('url') ||
+            $(this).attr('data-url');
 
 
         if (!gameUrl) {
-
-            console.warn(
-                'Game has no URL:',
-                item
+            console.error(
+                'Game URL could not be found.'
             );
 
             return;
         }
 
 
-        openGameInNewTab(
-            gameUrl,
-            gameName
-        );
-    }
-);
+        gameUrl =
+            fixGameURL(gameUrl);
 
 
-/* =========================================================
-   HOME BUTTON
-   ========================================================= */
+        /*
+         * Keep the corrected URL on the element.
+         */
 
-onClick(
-    '#gameButton',
-    function (
-        event
-    ) {
-
-        event.preventDefault();
-
-        goToGames();
-    }
-);
-
-
-/* =========================================================
-   LOGO
-   ========================================================= */
-
-onClick(
-    '.portal-logo',
-    function () {
-
-        goToGames();
-    }
-);
-
-
-/* =========================================================
-   TOP SETTINGS
-   ========================================================= */
-
-onClick(
-    '#settingsTopButton',
-    function () {
-
-        goToSettings();
-    }
-);
-
-
-/* =========================================================
-   WELCOME BUTTON
-   ========================================================= */
-
-onClick(
-    '[data-open-games]',
-    function () {
-
-        goToGames();
-    }
-);
-
-
-/* =========================================================
-   NAVIGATION
-   ========================================================= */
-
-onClick(
-    '.portal-nav-button',
-    function () {
-
-        const nav =
-            this.getAttribute(
-                'data-nav'
-            );
-
-
-        document
-            .querySelectorAll(
-                '.portal-nav-button'
-            )
-            .forEach(
-                function (button) {
-
-                    button.classList.remove(
-                        'active'
-                    );
-                }
-            );
-
-
-        this.classList.add(
-            'active'
+        li.attr(
+            'url',
+            gameUrl
         );
 
 
-        if (
-            nav === 'games'
-        ) {
-
-            goToGames();
-            return;
-        }
+        console.log(
+            '[GAME] Opening:',
+            gameUrl
+        );
 
 
-        if (
-            nav === 'recent'
-        ) {
+        /*
+         * OPEN THE GAME IN A NEW TAB.
+         *
+         * This completely bypasses the iframe.
+         */
 
-            goToGames();
+        const gameTab =
+            window.open(
+                gameUrl,
+                '_blank'
+            );
 
-            setTimeout(
-                function () {
 
-                    const section =
-                        document.getElementById(
-                            'recentSection'
-                        );
+        /*
+         * If the browser blocked the popup,
+         * tell the user.
+         */
 
-                    if (section) {
+        if (!gameTab) {
 
-                        section.scrollIntoView({
-                            behavior:
-                                'smooth',
-                            block:
-                                'start'
-                        });
-                    }
-
-                },
-                50
+            alert(
+                'The game could not open because your browser blocked the new tab. Please allow pop-ups for this site.'
             );
 
             return;
         }
 
 
-        if (
-            nav === 'favorites'
-        ) {
-
-            goToGames();
-
-            setTimeout(
-                function () {
-
-                    filterGames(
-                        'favorites'
-                    );
-
-                },
-                50
-            );
-
-            return;
-        }
-
-
-        filterGames(
-            nav
-        );
-
-        goToGames();
-    }
-);
-
-
-/* =========================================================
-   HOMEPAGE CARD COMPATIBILITY
-   ========================================================= */
-
-$(document).on(
-    'click',
-    '.homepage .card',
-    function (event) {
-
-        event.preventDefault();
-
-        const destination =
-            this.getAttribute(
-                'data'
-            );
-
-
-        if (
-            destination === 'games'
-        ) {
-
-            goToGames();
-
-            return;
-        }
-
-
-        if (
-            destination === 'settings'
-        ) {
-
-            goToSettings();
-
-            return;
-        }
-
-
-        if (
-            destination === 'proxy'
-        ) {
-
-            if (
-                typeof config !==
-                'undefined' &&
-                config &&
-                config.proxyPath
-            ) {
-
-                window.open(
-                    config.proxyPath,
-                    '_blank'
-                );
-
-            } else {
-
-                console.warn(
-                    'Proxy is not configured.'
-                );
-            }
-        }
-    }
-);
-
-
-/* =========================================================
-   HOME
-   ========================================================= */
-
-function returnHome() {
-
-    goToHome();
-}
-
-
-/* =========================================================
-   REFRESH
-   ========================================================= */
-
-function refreshPage() {
-
-    location.reload();
-}
-
-onClick(
-    '#refresh',
-    refreshPage
-);
-
-
-/* =========================================================
-   CATEGORY FILTER
-   ========================================================= */
-
-function filterGames(
-    category
-) {
-
-    const list =
-        document.getElementById(
-            'gamesList'
-        );
-
-    if (!list) {
-        return;
-    }
-
-
-    const items =
-        list.querySelectorAll(
-            'li'
-        );
-
-
-    items.forEach(
-        function (item) {
-
-            if (
-                category === 'favorites'
-            ) {
-
-                const gameName =
-                    item.getAttribute(
-                        'game-name'
-                    );
-
-                const favorites =
-                    JSON.parse(
-                        localStorage.getItem(
-                            'starredGamesList'
-                        ) || '[]'
-                    );
-
-
-                item.style.display =
-                    favorites.includes(
-                        gameName
-                    )
-                        ? ''
-                        : 'none';
-
-                return;
-            }
-
-
-            if (
-                category === 'all'
-            ) {
-
-                item.style.display =
-                    '';
-
-                return;
-            }
-
-
-            const categories =
-                String(
-                    item.getAttribute(
-                        'categories'
-                    ) || ''
-                ).toLowerCase();
-
-
-            item.style.display =
-                categories
-                    .split(',')
-                    .includes(
-                        category
-                    )
-                        ? ''
-                        : 'none';
-        }
-    );
-}
-
-
-/* =========================================================
-   CATEGORY BUTTONS
-   ========================================================= */
-
-onClick(
-    '.category-button',
-    function () {
-
-        const category =
-            this.getAttribute(
-                'data-category'
-            );
-
-
-        document
-            .querySelectorAll(
-                '.category-button'
-            )
-            .forEach(
-                function (button) {
-
-                    button.classList.remove(
-                        'active'
-                    );
-                }
-            );
-
-
-        this.classList.add(
-            'active'
-        );
-
-
-        filterGames(
-            category
-        );
+        gameTab.focus();
     }
 );
 
@@ -1095,80 +417,11 @@ onClick(
    SEARCH
    ========================================================= */
 
-function updateList() {
-
-    const search =
-        document.getElementById(
-            'search'
-        );
-
-    const list =
-        document.getElementById(
-            'gamesList'
-        );
-
-
-    if (!search || !list) {
-        return;
+$('#search').on(
+    'input',
+    function () {
+        displayGames();
     }
-
-
-    const filter =
-        search.value
-            .toLowerCase()
-            .trim();
-
-
-    const items =
-        Array.from(
-            list.querySelectorAll(
-                'li'
-            )
-        );
-
-
-    items.forEach(
-        function (item) {
-
-            const name =
-                String(
-                    item.getAttribute(
-                        'game-name'
-                    ) ||
-                    item.textContent
-                ).toLowerCase();
-
-
-            const aliases =
-                String(
-                    item.getAttribute(
-                        'aliases'
-                    ) || ''
-                ).toLowerCase();
-
-
-            const matches =
-                !filter ||
-                name.includes(
-                    filter
-                ) ||
-                aliases.includes(
-                    filter
-                );
-
-
-            item.style.display =
-                matches
-                    ? ''
-                    : 'none';
-        }
-    );
-}
-
-
-onInput(
-    '#search',
-    updateList
 );
 
 
@@ -1176,72 +429,10 @@ onInput(
    SORT
    ========================================================= */
 
-onChange(
-    '#sort',
+$('#sort').on(
+    'change',
     function () {
-
-        const sort =
-            this.value;
-
-        const list =
-            document.getElementById(
-                'gamesList'
-            );
-
-
-        if (!list) {
-            return;
-        }
-
-
-        const items =
-            Array.from(
-                list.children
-            );
-
-
-        items.sort(
-            function (
-                a,
-                b
-            ) {
-
-                const aName =
-                    (
-                        a.getAttribute(
-                            'game-name'
-                        ) || ''
-                    ).toLowerCase();
-
-
-                const bName =
-                    (
-                        b.getAttribute(
-                            'game-name'
-                        ) || ''
-                    ).toLowerCase();
-
-
-                return sort ===
-                    'reverse'
-                    ? bName.localeCompare(
-                        aName
-                    )
-                    : aName.localeCompare(
-                        bName
-                    );
-            }
-        );
-
-
-        items.forEach(
-            function (item) {
-
-                list.appendChild(
-                    item
-                );
-            }
-        );
+        displayGames();
     }
 );
 
@@ -1252,185 +443,112 @@ onChange(
 
 function randomGame() {
 
-    const items =
-        Array.from(
-            document.querySelectorAll(
-                '#gamesList li'
-            )
-        ).filter(
-            function (item) {
-
-                return (
-                    item.style.display !==
-                    'none'
-                );
-            }
-        );
-
-
-    if (!items.length) {
-
+    if (!games.length) {
         return;
     }
 
 
-    const item =
-        items[
+    const game =
+        games[
             Math.floor(
-                Math.random() *
-                items.length
+                Math.random() * games.length
             )
         ];
 
 
-    const gameUrl =
-        fixGameUrl(
-            item.getAttribute(
-                'url'
-            )
+    const url =
+        fixGameURL(
+            getGameURL(game)
         );
 
 
-    const gameName =
-        item.getAttribute(
-            'game-name'
+    if (!url) {
+        return;
+    }
+
+
+    const gameTab =
+        window.open(
+            url,
+            '_blank'
         );
 
 
-    openGameInNewTab(
-        gameUrl,
-        gameName
-    );
-}
+    if (!gameTab) {
 
-
-/* =========================================================
-   MAKE AVAILABLE FOR HTML
-   ========================================================= */
-
-window.randomGame =
-    randomGame;
-
-
-/* =========================================================
-   REFRESH
-   ========================================================= */
-
-function refreshIframe() {
-
-    const iframe =
-        document.querySelector(
-            '#page-loader iframe'
+        alert(
+            'The game could not open because your browser blocked the new tab.'
         );
-
-
-    if (!iframe) {
-
-        location.reload();
 
         return;
     }
 
 
-    const oldSrc =
-        iframe.getAttribute(
-            'src'
-        );
-
-
-    if (!oldSrc) {
-
-        location.reload();
-
-        return;
-    }
-
-
-    iframe.src =
-        '';
-
-    setTimeout(
-        function () {
-
-            iframe.src =
-                oldSrc;
-
-        },
-        100
-    );
+    gameTab.focus();
 }
+
+
+/* =========================================================
+   PAGE LOADER BUTTONS
+   ========================================================= */
+
+/*
+ * These buttons are kept so your existing HTML/CSS
+ * doesn't break, but games themselves no longer
+ * use the iframe.
+ */
+
+$('#gameButton').on(
+    'click',
+    function () {
+        returnHome();
+    }
+);
+
+
+$('#refresh').on(
+    'click',
+    function () {
+
+        /*
+         * Refresh the main School Terminal page.
+         */
+
+        window.location.reload();
+    }
+);
 
 
 /* =========================================================
    CLOAK
    ========================================================= */
 
-function makecloak(
-    replaceUrl
-) {
+function makecloak() {
 
-    if (!replaceUrl) {
+    let cloakURL =
+        localStorage.getItem('cloakUrl');
 
-        replaceUrl =
-            preferences.cloakUrl;
+
+    if (!cloakURL) {
+
+        if (
+            typeof config !== 'undefined' &&
+            config.cloakUrl
+        ) {
+            cloakURL =
+                config.cloakUrl;
+        }
     }
 
 
-    const currentUrl =
-        window.location.href;
-
-
-    const win =
-        window.open();
-
-
-    if (
-        !win ||
-        win.closed
-    ) {
-
+    if (!cloakURL) {
         return;
     }
 
 
-    win.document.body.style.margin =
-        '0';
-
-    win.document.body.style.height =
-        '100vh';
-
-
-    const iframe =
-        win.document.createElement(
-            'iframe'
-        );
-
-
-    iframe.style.border =
-        'none';
-
-    iframe.style.width =
-        '100%';
-
-    iframe.style.height =
-        '100%';
-
-
-    iframe.allow =
-        'fullscreen';
-
-
-    iframe.src =
-        currentUrl;
-
-
-    win.document.body.appendChild(
-        iframe
-    );
-
-
-    window.location.replace(
-        replaceUrl
+    window.open(
+        cloakURL,
+        '_blank'
     );
 }
 
@@ -1439,78 +557,51 @@ function makecloak(
    MASK
    ========================================================= */
 
-function mask(
-    title,
-    iconUrl
-) {
+function mask() {
 
-    title =
-        title ||
-        preferences.maskTitle;
+    const title =
+        localStorage.getItem(
+            'maskTitle'
+        );
 
-
-    iconUrl =
-        iconUrl ||
-        preferences.maskIconUrl;
-
-
-    document.title =
-        title;
-
-
-    let link =
-        document.querySelector(
-            "link[rel*='icon']"
+    const icon =
+        localStorage.getItem(
+            'maskIcon'
         );
 
 
-    if (!link) {
+    if (title) {
+        document.title = title;
+    }
 
-        link =
-            document.createElement(
-                'link'
+
+    if (icon) {
+
+        let favicon =
+            document.querySelector(
+                'link[rel="icon"]'
             );
 
-        link.rel =
-            'icon';
 
-        document.head.appendChild(
-            link
-        );
+        if (!favicon) {
+
+            favicon =
+                document.createElement(
+                    'link'
+                );
+
+            favicon.rel =
+                'icon';
+
+            document.head.appendChild(
+                favicon
+            );
+        }
+
+
+        favicon.href =
+            icon;
     }
-
-
-    if (iconUrl) {
-
-        link.href =
-            iconUrl;
-    }
-}
-
-
-/* =========================================================
-   POPUPS
-   ========================================================= */
-
-function popupsAllowed() {
-
-    const popUp =
-        window.open(
-            '',
-            'userConsole',
-            'width=1000,height=700,left=24,top=24,scrollbars,resizable'
-        );
-
-
-    if (!popUp) {
-
-        return false;
-    }
-
-
-    popUp.close();
-
-    return true;
 }
 
 
@@ -1518,7 +609,7 @@ function popupsAllowed() {
    MUTE
    ========================================================= */
 
-function toggleMute() {
+function mute() {
 
     const media =
         document.querySelectorAll(
@@ -1526,779 +617,239 @@ function toggleMute() {
         );
 
 
-    if (!media.length) {
+    media.forEach(
+        function (element) {
+
+            element.muted =
+                !element.muted;
+        }
+    );
+}
+
+
+/* =========================================================
+   PRESETS
+   ========================================================= */
+
+function updatePreset() {
+
+    const preset =
+        $('#presets').val();
+
+
+    let url = '';
+    let title = '';
+    let icon = '';
+
+
+    switch (preset) {
+
+        case 'classroom':
+
+            url =
+                'https://classroom.google.com/';
+
+            title =
+                'Google Classroom';
+
+            icon =
+                'https://ssl.gstatic.com/classroom/favicon.png';
+
+            break;
+
+
+        case 'drive':
+
+            url =
+                'https://drive.google.com/';
+
+            title =
+                'Google Drive';
+
+            break;
+
+
+        case 'mail':
+
+            url =
+                'https://mail.google.com/';
+
+            title =
+                'Google Mail';
+
+            break;
+
+
+        case 'canvas':
+
+            url =
+                'https://www.instructure.com/canvas';
+
+            title =
+                'Canvas';
+
+            break;
+    }
+
+
+    $('#cloakUrlInput')
+        .val(url);
+
+    $('#maskTitleInput')
+        .val(title);
+
+    $('#maskIconInput')
+        .val(icon);
+}
+
+
+/* =========================================================
+   CLOAK URL SETTING
+   ========================================================= */
+
+$('#cloakUrlSubmit').on(
+    'click',
+    function () {
+
+        const value =
+            $('#cloakUrlInput').val();
+
+
+        localStorage.setItem(
+            'cloakUrl',
+            value
+        );
+    }
+);
+
+
+/* =========================================================
+   MASK TITLE SETTING
+   ========================================================= */
+
+$('#maskTitleSubmit').on(
+    'click',
+    function () {
+
+        const value =
+            $('#maskTitleInput').val();
+
+
+        localStorage.setItem(
+            'maskTitle',
+            value
+        );
+    }
+);
+
+
+/* =========================================================
+   MASK ICON SETTING
+   ========================================================= */
+
+$('#maskIconSubmit').on(
+    'click',
+    function () {
+
+        const value =
+            $('#maskIconInput').val();
+
+
+        localStorage.setItem(
+            'maskIcon',
+            value
+        );
+    }
+);
+
+
+/* =========================================================
+   KEYBOARD SHORTCUTS
+   ========================================================= */
+
+document.addEventListener(
+    'keydown',
+    function (event) {
+
+        pressedKeys[
+            event.key.toLowerCase()
+        ] = true;
+
+
+        checkKeybinds();
+    }
+);
+
+
+document.addEventListener(
+    'keyup',
+    function (event) {
+
+        delete pressedKeys[
+            event.key.toLowerCase()
+        ];
+    }
+);
+
+
+function checkKeybinds() {
+
+    if (!keybinds.length) {
         return;
     }
 
 
-    const muted =
-        Array.from(
-            media
-        ).every(
-            function (
-                element
+    keybinds.forEach(
+        function (bind) {
+
+            if (
+                !bind ||
+                !bind.keys ||
+                !bind.action
             ) {
-
-                return element.muted;
-            }
-        );
-
-
-    media.forEach(
-        function (
-            element
-        ) {
-
-            element.muted =
-                !muted;
-        }
-    );
-}
-
-
-/* =========================================================
-   SAVE
-   ========================================================= */
-
-function getMainSave() {
-
-    const save = {
-
-        localStorage:
-            btoa(
-                JSON.stringify(
-                    Object.entries(
-                        localStorage
-                    )
-                )
-            ),
-
-        cookies:
-            btoa(
-                document.cookie
-            )
-
-    };
-
-
-    let result =
-        btoa(
-            JSON.stringify(
-                save
-            )
-        );
-
-
-    if (
-        typeof CryptoJS !==
-        'undefined'
-    ) {
-
-        result =
-            CryptoJS.AES.encrypt(
-                result,
-                'save'
-            ).toString();
-    }
-
-
-    return result;
-}
-
-
-/* =========================================================
-   DOWNLOAD
-   ========================================================= */
-
-function downloadMainSave() {
-
-    const blob =
-        new Blob(
-            [
-                getMainSave()
-            ],
-            {
-                type:
-                    'application/octet-stream'
-            }
-        );
-
-
-    const url =
-        URL.createObjectURL(
-            blob
-        );
-
-
-    const link =
-        document.createElement(
-            'a'
-        );
-
-
-    link.href =
-        url;
-
-    link.download =
-        'school-terminal.data';
-
-
-    document.body.appendChild(
-        link
-    );
-
-    link.click();
-
-    link.remove();
-
-
-    setTimeout(
-        function () {
-
-            URL.revokeObjectURL(
-                url
-            );
-
-        },
-        100
-    );
-}
-
-
-/* =========================================================
-   UPLOAD
-   ========================================================= */
-
-function uploadMainSave() {
-
-    const input =
-        document.createElement(
-            'input'
-        );
-
-
-    input.type =
-        'file';
-
-    input.accept =
-        '.data';
-
-
-    input.addEventListener(
-        'change',
-        function () {
-
-            const file =
-                input.files[0];
-
-
-            if (!file) {
                 return;
             }
 
 
-            const reader =
-                new FileReader();
-
-
-            reader.onload =
-                function () {
-
-                    try {
-
-                        let data =
-                            reader.result;
-
-
-                        if (
-                            typeof CryptoJS !==
-                            'undefined'
-                        ) {
-
-                            data =
-                                CryptoJS.AES.decrypt(
-                                    data,
-                                    'save'
-                                ).toString(
-                                    CryptoJS.enc.Utf8
-                                );
-                        }
-
-
-                        const save =
-                            JSON.parse(
-                                atob(
-                                    data
-                                )
-                            );
-
-
-                        const localSave =
-                            JSON.parse(
-                                atob(
-                                    save.localStorage
-                                )
-                            );
-
-
-                        localSave.forEach(
-                            function (
-                                item
-                            ) {
-
-                                localStorage.setItem(
-                                    item[0],
-                                    item[1]
-                                );
-                            }
-                        );
-
-
-                        alert(
-                            'Save uploaded!'
-                        );
-
-
-                    } catch (error) {
-
-                        console.error(
-                            error
-                        );
-
-                        alert(
-                            'That save file could not be loaded.'
-                        );
+            const requiredKeys =
+                bind.keys.map(
+                    function (key) {
+                        return String(
+                            key
+                        ).toLowerCase();
                     }
-
-                };
-
-
-            reader.readAsText(
-                file
-            );
-        }
-    );
+                );
 
 
-    input.click();
-}
+            const activated =
+                requiredKeys.every(
+                    function (key) {
+                        return pressedKeys[key];
+                    }
+                );
 
 
-/* =========================================================
-   COLOR SETTINGS
-   ========================================================= */
+            if (activated) {
 
-const defaultColorSettings = {
+                try {
 
-    bg:
-        '#faf8f6',
+                    eval(
+                        bind.action
+                    );
 
-    'block-color':
-        '#ffffff',
+                }
+                catch (error) {
 
-    'button-color':
-        '#ffffff',
-
-    'games-color':
-        '#ffffff',
-
-    'hover-color':
-        '#f1efed',
-
-    'scrollbar-color':
-        '#c7c2bd',
-
-    'scroll-track-color':
-        '#f4f2f0',
-
-    'font-color':
-        '#252525'
-};
+                    console.error(
+                        'Keyboard shortcut error:',
+                        error
+                    );
+                }
 
 
-let colorSettings;
-
-
-try {
-
-    colorSettings =
-        JSON.parse(
-            localStorage.getItem(
-                'colorSettings'
-            )
-        ) ||
-        {
-            ...defaultColorSettings
-        };
-
-} catch (error) {
-
-    colorSettings =
-        {
-            ...defaultColorSettings
-        };
-}
-
-
-Object.entries(
-    colorSettings
-).forEach(
-    function (
-        [
-            key,
-            value
-        ]
-    ) {
-
-        document.documentElement
-            .style
-            .setProperty(
-                '--' + key,
-                value
-            );
-    }
-);
-
-
-/* =========================================================
-   SAVE COLORS
-   ========================================================= */
-
-function saveColorChanges() {
-
-    const inputs =
-        document.querySelectorAll(
-            'input[type="color"]'
-        );
-
-
-    const settings = {
-        ...colorSettings
-    };
-
-
-    inputs.forEach(
-        function (
-            input
-        ) {
-
-            if (
-                input.id
-            ) {
-
-                settings[
-                    input.id
-                ] =
-                    input.value;
+                pressedKeys = {};
             }
         }
-    );
-
-
-    localStorage.setItem(
-        'colorSettings',
-        JSON.stringify(
-            settings
-        )
-    );
-
-
-    colorSettings =
-        settings;
-
-
-    Object.entries(
-        settings
-    ).forEach(
-        function (
-            [
-                key,
-                value
-            ]
-        ) {
-
-            document.documentElement
-                .style
-                .setProperty(
-                    '--' + key,
-                    value
-                );
-        }
-    );
-}
-
-
-/* =========================================================
-   RESTORE COLORS
-   ========================================================= */
-
-function restoreColorChanges() {
-
-    localStorage.removeItem(
-        'colorSettings'
-    );
-
-
-    colorSettings =
-        {
-            ...defaultColorSettings
-        };
-
-
-    Object.entries(
-        colorSettings
-    ).forEach(
-        function (
-            [
-                key,
-                value
-            ]
-        ) {
-
-            document.documentElement
-                .style
-                .setProperty(
-                    '--' + key,
-                    value
-                );
-
-
-            const input =
-                document.getElementById(
-                    key
-                );
-
-
-            if (
-                input &&
-                input.type ===
-                'color'
-            ) {
-
-                input.value =
-                    value;
-            }
-        }
-    );
-}
-
-
-/* =========================================================
-   PREFERENCES
-   ========================================================= */
-
-const preferencesDefaults = {
-
-    cloak:
-        false,
-
-    cloakUrl:
-        'https://classroom.google.com/',
-
-    mask:
-        true,
-
-    maskTitle:
-        'Google Maps',
-
-    maskIconUrl:
-        'https://www.google.com/images/branding/product/ico/googleg_lodp.ico',
-
-    background:
-        false
-};
-
-
-let preferences;
-
-
-try {
-
-    const stored =
-        localStorage.getItem(
-            'preferences'
-        );
-
-
-    preferences =
-        stored
-            ? JSON.parse(
-                stored
-            )
-            : {
-                ...preferencesDefaults
-            };
-
-} catch (error) {
-
-    preferences =
-        {
-            ...preferencesDefaults
-        };
-}
-
-
-preferences =
-    {
-        ...preferencesDefaults,
-        ...preferences
-    };
-
-
-localStorage.setItem(
-    'preferences',
-    JSON.stringify(
-        preferences
-    )
-);
-
-
-/* =========================================================
-   PREFERENCE INPUTS
-   ========================================================= */
-
-const cloakCheckbox =
-    document.getElementById(
-        'cloakCheckboxInput'
-    );
-
-const backgroundCheckbox =
-    document.getElementById(
-        'backgroundCheckboxInput'
-    );
-
-const cloakUrlInput =
-    document.getElementById(
-        'cloakUrlInput'
-    );
-
-const maskCheckbox =
-    document.getElementById(
-        'maskCheckboxInput'
-    );
-
-const maskTitleInput =
-    document.getElementById(
-        'maskTitleInput'
-    );
-
-const maskIconInput =
-    document.getElementById(
-        'maskIconInput'
-    );
-
-
-if (cloakCheckbox) {
-
-    cloakCheckbox.checked =
-        preferences.cloak;
-}
-
-
-if (backgroundCheckbox) {
-
-    backgroundCheckbox.checked =
-        preferences.background;
-}
-
-
-if (cloakUrlInput) {
-
-    cloakUrlInput.value =
-        preferences.cloakUrl;
-}
-
-
-if (maskCheckbox) {
-
-    maskCheckbox.checked =
-        preferences.mask;
-}
-
-
-if (maskTitleInput) {
-
-    maskTitleInput.value =
-        preferences.maskTitle;
-}
-
-
-if (maskIconInput) {
-
-    maskIconInput.value =
-        preferences.maskIconUrl;
-}
-
-
-/* =========================================================
-   SETTINGS
-   ========================================================= */
-
-onChange(
-    '#cloakCheckboxInput',
-    function () {
-
-        preferences.cloak =
-            this.checked;
-
-        localStorage.setItem(
-            'preferences',
-            JSON.stringify(
-                preferences
-            )
-        );
-    }
-);
-
-
-onChange(
-    '#backgroundCheckboxInput',
-    function () {
-
-        preferences.background =
-            this.checked;
-
-        localStorage.setItem(
-            'preferences',
-            JSON.stringify(
-                preferences
-            )
-        );
-    }
-);
-
-
-onChange(
-    '#maskCheckboxInput',
-    function () {
-
-        preferences.mask =
-            this.checked;
-
-        localStorage.setItem(
-            'preferences',
-            JSON.stringify(
-                preferences
-            )
-        );
-    }
-);
-
-
-onClick(
-    '#cloakUrlSubmit',
-    function () {
-
-        preferences.cloakUrl =
-            cloakUrlInput.value.trim();
-
-
-        localStorage.setItem(
-            'preferences',
-            JSON.stringify(
-                preferences
-            )
-        );
-
-
-        alert(
-            'Cloak URL saved.'
-        );
-    }
-);
-
-
-onClick(
-    '#maskTitleSubmit',
-    function () {
-
-        preferences.maskTitle =
-            maskTitleInput.value;
-
-
-        localStorage.setItem(
-            'preferences',
-            JSON.stringify(
-                preferences
-            )
-        );
-
-
-        mask();
-    }
-);
-
-
-onClick(
-    '#maskIconSubmit',
-    function () {
-
-        preferences.maskIconUrl =
-            maskIconInput.value;
-
-
-        localStorage.setItem(
-            'preferences',
-            JSON.stringify(
-                preferences
-            )
-        );
-
-
-        mask();
-    }
-);
-
-
-/* =========================================================
-   SAVE BUTTONS
-   ========================================================= */
-
-onClick(
-    '#download',
-    downloadMainSave
-);
-
-onClick(
-    '#upload',
-    uploadMainSave
-);
-
-
-/* =========================================================
-   RANDOM BUTTON
-   ========================================================= */
-
-onClick(
-    '#randomGame',
-    randomGame
-);
-
-
-/* =========================================================
-   MASK
-   ========================================================= */
-
-if (
-    preferences.mask
-) {
-
-    mask();
-}
-
-
-/* =========================================================
-   AUTOMATIC GAMES PAGE
-   ========================================================= */
-
-function openGamesMenuOnStartup() {
-
-    goToGames();
-
-    updateList();
-
-    console.log(
-        'Games menu opened.'
     );
 }
 
@@ -2307,41 +858,29 @@ function openGamesMenuOnStartup() {
    STARTUP
    ========================================================= */
 
-if (
-    document.readyState ===
-    'loading'
-) {
+$(document).ready(
+    function () {
 
-    document.addEventListener(
-        'DOMContentLoaded',
-        openGamesMenuOnStartup,
-        {
-            once: true
-        }
-    );
+        /*
+         * Start on homepage.
+         */
 
-} else {
-
-    openGamesMenuOnStartup();
-}
+        $('.games').hide();
+        $('.settings').hide();
+        $('.homepage').show();
 
 
-/* =========================================================
-   FINAL
-   ========================================================= */
+        /*
+         * Load games.
+         */
 
-console.log(
-    '%cSchool Terminal loaded.',
-    'font-weight:bold;'
-);
+        loadGames();
 
-console.log(
-    'Cloak:',
-    preferences.cloak
-        ? 'ON'
-        : 'OFF'
-);
 
-console.log(
-    'Games use trailing slash URLs.'
+        /*
+         * Apply saved mask.
+         */
+
+        mask();
+    }
 );
