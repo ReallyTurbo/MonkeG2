@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-au">
 
 <head>
 
@@ -19,7 +19,7 @@
 
     <meta
         name="theme-color"
-        content="#f8f7f5"
+        content="#f5f5f5"
     >
 
     <!-- =====================================================
@@ -100,7 +100,7 @@
 
 
     <!-- =====================================================
-         OPTIONAL ICON
+         FAVICON
          ===================================================== -->
 
     <link
@@ -232,32 +232,30 @@
 
                             <path
                                 d="M8,64s0-56,60-56,60,112,120,112,60-56,60-56"
-                            >
+                            />
 
                             <path
                                 d="M248,64s0-56-60-56-60,112-120,112S8,64,8,64"
-                            >
+                            />
 
                         </g>
 
 
-                        <g
-                            stroke-dasharray="180 656"
-                        >
+                        <g stroke-dasharray="180 656">
 
                             <path
                                 class="worm1"
                                 stroke="url(#grad1)"
                                 stroke-dashoffset="0"
                                 d="M8,64s0-56,60-56,60,112,120,112,60-56,60-56"
-                            >
+                            />
 
                             <path
                                 class="worm2"
                                 stroke="url(#grad2)"
                                 stroke-dashoffset="358"
                                 d="M248,64s0-56-60-56-60,112-120,112S8,64,8,64"
-                            >
+                            />
 
                         </g>
 
@@ -283,20 +281,17 @@
 
 
     <!-- =====================================================
-         EVERYTHING
+         MAIN SITE
          ===================================================== -->
 
     <section id="everything-else">
 
 
         <!-- =================================================
-             LEFT NAVIGATION
+             SIDEBAR
              ================================================= -->
 
         <nav class="portal-nav">
-
-
-            <!-- Brand -->
 
             <button
                 type="button"
@@ -304,177 +299,102 @@
                 onclick="goToGames()"
                 title="Games"
             >
-
                 ST
-
             </button>
 
-
-            <!-- Search -->
 
             <button
                 type="button"
                 class="portal-nav-button"
-                data-nav="search"
                 onclick="
                     goToGames();
-                    setTimeout(function(){
-                        const search = document.getElementById('search');
-                        if(search){
+
+                    setTimeout(function () {
+
+                        const search =
+                            document.getElementById('search');
+
+                        if (search) {
                             search.focus();
                         }
-                    },50);
+
+                    }, 50);
                 "
                 title="Search"
             >
-
                 🔍
-
             </button>
 
-
-            <!-- Games -->
 
             <button
                 type="button"
                 class="portal-nav-button active"
-                data-nav="games"
                 onclick="goToGames()"
                 title="Games"
             >
-
                 🎮
-
             </button>
 
 
-            <!-- Action -->
-
             <button
                 type="button"
-                class="portal-nav-button"
-                data-nav="action"
-                onclick="
-                    goToGames();
-                    setTimeout(function(){
-                        const button = document.querySelector('[data-category=&quot;action&quot;]');
-                        if(button) button.click();
-                    },50);
-                "
+                class="portal-nav-button category-nav"
+                data-category-nav="action"
                 title="Action"
             >
-
                 ⚔️
-
             </button>
 
 
-            <!-- Puzzle -->
-
             <button
                 type="button"
-                class="portal-nav-button"
-                data-nav="puzzle"
-                onclick="
-                    goToGames();
-                    setTimeout(function(){
-                        const button = document.querySelector('[data-category=&quot;puzzle&quot;]');
-                        if(button) button.click();
-                    },50);
-                "
+                class="portal-nav-button category-nav"
+                data-category-nav="puzzle"
                 title="Puzzle"
             >
-
                 🧩
-
             </button>
 
 
-            <!-- Sports -->
-
             <button
                 type="button"
-                class="portal-nav-button"
-                data-nav="sports"
-                onclick="
-                    goToGames();
-                    setTimeout(function(){
-                        const button = document.querySelector('[data-category=&quot;sports&quot;]');
-                        if(button) button.click();
-                    },50);
-                "
+                class="portal-nav-button category-nav"
+                data-category-nav="sports"
                 title="Sports"
             >
-
                 🏀
-
             </button>
 
 
-            <!-- Racing -->
-
             <button
                 type="button"
-                class="portal-nav-button"
-                data-nav="racing"
-                onclick="
-                    goToGames();
-                    setTimeout(function(){
-                        const button = document.querySelector('[data-category=&quot;racing&quot;]');
-                        if(button) button.click();
-                    },50);
-                "
+                class="portal-nav-button category-nav"
+                data-category-nav="racing"
                 title="Racing"
             >
-
                 🏁
-
             </button>
 
 
-            <!-- Multiplayer -->
-
             <button
                 type="button"
-                class="portal-nav-button"
-                data-nav="multiplayer"
-                onclick="
-                    goToGames();
-                    setTimeout(function(){
-                        const button = document.querySelector('[data-category=&quot;multiplayer&quot;]');
-                        if(button) button.click();
-                    },50);
-                "
+                class="portal-nav-button category-nav"
+                data-category-nav="multiplayer"
                 title="Multiplayer"
             >
-
-                💎
-
+                👥
             </button>
 
-
-            <!-- Adventure -->
 
             <button
                 type="button"
-                class="portal-nav-button"
-                data-nav="adventure"
-                onclick="
-                    goToGames();
-                    setTimeout(function(){
-                        const button = document.querySelector('[data-category=&quot;adventure&quot;]');
-                        if(button) button.click();
-                    },50);
-                "
+                class="portal-nav-button category-nav"
+                data-category-nav="adventure"
                 title="Adventure"
             >
-
                 🗺️
-
             </button>
 
-
-            <!-- Settings -->
 
             <button
                 type="button"
@@ -482,9 +402,7 @@
                 onclick="goToSettings()"
                 title="Settings"
             >
-
                 ⚙️
-
             </button>
 
         </nav>
@@ -495,7 +413,6 @@
              ================================================= -->
 
         <header class="portal-topbar">
-
 
             <div
                 class="portal-logo"
@@ -519,25 +436,22 @@
                     type="button"
                     class="portal-action"
                     onclick="
-                        const search =
-                            document.getElementById('search');
+                        goToGames();
 
-                        if(search){
-                            goToGames();
+                        setTimeout(function () {
 
-                            setTimeout(
-                                function(){
-                                    search.focus();
-                                },
-                                50
-                            );
-                        }
+                            const search =
+                                document.getElementById('search');
+
+                            if (search) {
+                                search.focus();
+                            }
+
+                        }, 50);
                     "
                     title="Search"
                 >
-
                     🔍
-
                 </button>
 
 
@@ -547,25 +461,7 @@
                     onclick="goToSettings()"
                     title="Settings"
                 >
-
                     ⚙️
-
-                </button>
-
-
-                <button
-                    type="button"
-                    class="portal-action"
-                    onclick="
-                        alert(
-                            'You are currently browsing School Terminal.'
-                        );
-                    "
-                    title="Notifications"
-                >
-
-                    🔔
-
                 </button>
 
 
@@ -573,10 +469,7 @@
                     class="portal-avatar"
                     title="Profile"
                 >
-
                     🙂
-
-
                 </div>
 
             </div>
@@ -591,17 +484,15 @@
         <dialog id="disabled">
 
             <div>
-
                 This feature has been disabled
                 by whoever is hosting this instance.
-
             </div>
 
         </dialog>
 
 
         <!-- =================================================
-             CLOAK SCREEN
+             CLOAK
              ================================================= -->
 
         <div class="cloaklaunch">
@@ -619,9 +510,7 @@
                 type="button"
                 id="disableCloak"
             >
-
                 Continue
-
             </button>
 
         </div>
@@ -634,7 +523,6 @@
         <div class="homepage">
 
             <div class="welcome-home">
-
 
                 <div class="welcome-text">
 
@@ -649,9 +537,9 @@
 
 
                     <p>
-                        Discover hundreds of browser games,
-                        from fast arcade games to puzzles,
-                        racing, sports and adventures.
+                        Discover browser games across
+                        arcade, action, sports, racing,
+                        puzzle and adventure.
                     </p>
 
 
@@ -660,9 +548,7 @@
                         class="welcome-play-button"
                         onclick="goToGames()"
                     >
-
                         Browse Games
-
                     </button>
 
                 </div>
@@ -683,9 +569,7 @@
                     ></div>
 
                     <div class="welcome-controller">
-
                         🎮
-
                     </div>
 
                 </div>
@@ -702,8 +586,6 @@
         <div class="games">
 
 
-            <!-- Game heading -->
-
             <div class="portal-welcome">
 
                 <h1>
@@ -717,7 +599,7 @@
             </div>
 
 
-            <!-- Search -->
+            <!-- SEARCH -->
 
             <div class="games-top-tools">
 
@@ -733,15 +615,11 @@
 
                     <select id="sort">
 
-                        <option
-                            value="alphabetical"
-                        >
+                        <option value="alphabetical">
                             A-Z
                         </option>
 
-                        <option
-                            value="reverse"
-                        >
+                        <option value="reverse">
                             Z-A
                         </option>
 
@@ -753,9 +631,7 @@
                         class="randgame"
                         onclick="randomGame()"
                     >
-
                         🎲 Random Game
-
                     </button>
 
                 </div>
@@ -763,20 +639,14 @@
             </div>
 
 
-            <!-- =================================================
-                 GAMES CONTENT
-                 ================================================= -->
+            <!-- GAMES -->
 
             <div class="games-content">
 
 
-                <!-- =============================================
-                     CATEGORY SIDEBAR
-                     ============================================= -->
+                <!-- CATEGORY SIDEBAR -->
 
-                <aside
-                    class="game-category-sidebar"
-                >
+                <aside class="game-category-sidebar">
 
                     <h3>
                         Categories
@@ -791,19 +661,12 @@
                 </aside>
 
 
-                <!-- =============================================
-                     GAME SECTIONS
-                     ============================================= -->
+                <!-- GAME SECTIONS -->
 
-                <div
-                    id="gameSections"
-                    class="game-sections"
-                >
+                <div class="game-sections">
 
 
-                    <!-- =========================================
-                         RECENTLY PLAYED
-                         ========================================= -->
+                    <!-- RECENTLY PLAYED -->
 
                     <section
                         class="game-section"
@@ -829,13 +692,9 @@
                     </section>
 
 
-                    <!-- =========================================
-                         PICKS
-                         ========================================= -->
+                    <!-- FEATURED -->
 
-                    <section
-                        class="game-section"
-                    >
+                    <section class="game-section">
 
                         <div
                             class="game-section-header"
@@ -860,24 +719,20 @@
                     </section>
 
 
-                    <!-- =========================================
-                         NEW GAMES
-                         ========================================= -->
+                    <!-- MORE GAMES -->
 
-                    <section
-                        class="game-section"
-                    >
+                    <section class="game-section">
 
                         <div
                             class="game-section-header"
                         >
 
                             <h2>
-                                New games we love
+                                More games to discover
                             </h2>
 
                             <p>
-                                More games to discover
+                                Explore the library
                             </p>
 
                         </div>
@@ -891,13 +746,9 @@
                     </section>
 
 
-                    <!-- =========================================
-                         ALL GAMES
-                         ========================================= -->
+                    <!-- ALL GAMES -->
 
-                    <section
-                        class="game-section"
-                    >
+                    <section class="game-section">
 
                         <div
                             class="game-section-header"
@@ -932,21 +783,16 @@
 
         <div class="settings">
 
-
             <div class="setting-bg">
-
 
                 <h4>
                     Settings
                 </h4>
 
-
                 <p>
                     Customize your School Terminal experience.
                 </p>
 
-
-                <!-- SAVE -->
 
                 <div class="setting">
 
@@ -954,54 +800,32 @@
                         Game Data
                     </h5>
 
-                    <p>
-                        Save or restore your preferences
-                        and local game data.
-                    </p>
-
-
                     <button
-                        type="button"
                         class="save-button"
                         id="download"
+                        type="button"
                     >
-
                         Download Game Data
-
                     </button>
-
 
                     <button
-                        type="button"
                         class="save-button"
                         id="upload"
+                        type="button"
                     >
-
                         Upload Game Data
-
                     </button>
 
-
-                    <p
-                        class="upload-result"
-                    ></p>
+                    <p class="upload-result"></p>
 
                 </div>
 
-
-                <!-- PRESETS -->
 
                 <div class="setting">
 
                     <h5>
                         Cloak and Mask Presets
                     </h5>
-
-
-                    <p>
-                        Quickly choose a preset.
-                    </p>
-
 
                     <select id="presets">
 
@@ -1029,26 +853,17 @@
                         class="submit-button"
                         onclick="updatePreset()"
                     >
-
                         Submit
-
                     </button>
 
                 </div>
 
-
-                <!-- CLOAK -->
 
                 <div class="setting">
 
                     <h5>
                         Cloak
                     </h5>
-
-                    <p>
-                        Toggle whether Cloak is enabled.
-                    </p>
-
 
                     <label class="switch">
 
@@ -1058,9 +873,7 @@
                             hidden
                         >
 
-                        <div
-                            class="switch__wrapper"
-                        >
+                        <div class="switch__wrapper">
 
                             <div
                                 class="switch__toggle"
@@ -1073,19 +886,11 @@
                 </div>
 
 
-                <!-- CLOAK URL -->
-
                 <div class="setting">
 
                     <h5>
                         Cloak URL
                     </h5>
-
-                    <p>
-                        Choose the page used when Cloak
-                        is activated.
-                    </p>
-
 
                     <input
                         id="cloakUrlInput"
@@ -1094,32 +899,22 @@
                         placeholder="https://google.com/"
                     >
 
-
                     <button
                         type="button"
                         id="cloakUrlSubmit"
                         class="submit-button"
                     >
-
                         Save
-
                     </button>
 
                 </div>
 
-
-                <!-- MASK -->
 
                 <div class="setting">
 
                     <h5>
                         Mask
                     </h5>
-
-                    <p>
-                        Change the browser tab title and icon.
-                    </p>
-
 
                     <label class="switch">
 
@@ -1129,9 +924,7 @@
                             hidden
                         >
 
-                        <div
-                            class="switch__wrapper"
-                        >
+                        <div class="switch__wrapper">
 
                             <div
                                 class="switch__toggle"
@@ -1144,14 +937,11 @@
                 </div>
 
 
-                <!-- MASK TITLE -->
-
                 <div class="setting">
 
                     <h5>
                         Mask Title
                     </h5>
-
 
                     <input
                         id="maskTitleInput"
@@ -1160,28 +950,22 @@
                         placeholder="Google Maps"
                     >
 
-
                     <button
                         type="button"
                         id="maskTitleSubmit"
                         class="submit-button"
                     >
-
                         Save
-
                     </button>
 
                 </div>
 
-
-                <!-- MASK ICON -->
 
                 <div class="setting">
 
                     <h5>
                         Mask Icon URL
                     </h5>
-
 
                     <input
                         id="maskIconInput"
@@ -1190,34 +974,22 @@
                         placeholder="https://example.com/icon.png"
                     >
 
-
                     <button
                         type="button"
                         id="maskIconSubmit"
                         class="submit-button"
                     >
-
                         Save
-
                     </button>
 
                 </div>
 
-
-                <!-- BACKGROUND -->
 
                 <div class="setting">
 
                     <h5>
                         Background
                     </h5>
-
-
-                    <p>
-                        Disable background effects on
-                        slower computers.
-                    </p>
-
 
                     <label class="switch">
 
@@ -1227,9 +999,7 @@
                             hidden
                         >
 
-                        <div
-                            class="switch__wrapper"
-                        >
+                        <div class="switch__wrapper">
 
                             <div
                                 class="switch__toggle"
@@ -1242,8 +1012,6 @@
                 </div>
 
 
-                <!-- APPEARANCE -->
-
                 <div class="setting">
 
                     <h5>
@@ -1251,104 +1019,100 @@
                     </h5>
 
 
-                    <div>
+                    <label for="bg">
+                        Background
+                    </label>
 
-                        <label for="bg">
-                            Background
-                        </label>
-
-                        <input
-                            type="color"
-                            id="bg"
-                            value="#f8f7f5"
-                            class="color-input"
-                        >
+                    <input
+                        type="color"
+                        id="bg"
+                        value="#f5f5f5"
+                        class="color-input"
+                    >
 
 
-                        <label for="block-color">
-                            Block
-                        </label>
+                    <label for="block-color">
+                        Block
+                    </label>
 
-                        <input
-                            type="color"
-                            id="block-color"
-                            value="#ffffff"
-                            class="color-input"
-                        >
-
-
-                        <label for="button-color">
-                            Buttons
-                        </label>
-
-                        <input
-                            type="color"
-                            id="button-color"
-                            value="#ffffff"
-                            class="color-input"
-                        >
+                    <input
+                        type="color"
+                        id="block-color"
+                        value="#ffffff"
+                        class="color-input"
+                    >
 
 
-                        <label for="games-color">
-                            Games
-                        </label>
+                    <label for="button-color">
+                        Buttons
+                    </label>
 
-                        <input
-                            type="color"
-                            id="games-color"
-                            value="#ffffff"
-                            class="color-input"
-                        >
-
-
-                        <label for="hover-color">
-                            Hover
-                        </label>
-
-                        <input
-                            type="color"
-                            id="hover-color"
-                            value="#f1efec"
-                            class="color-input"
-                        >
+                    <input
+                        type="color"
+                        id="button-color"
+                        value="#ffffff"
+                        class="color-input"
+                    >
 
 
-                        <label for="scrollbar-color">
-                            Scrollbar
-                        </label>
+                    <label for="games-color">
+                        Games
+                    </label>
 
-                        <input
-                            type="color"
-                            id="scrollbar-color"
-                            value="#c9c4bf"
-                            class="color-input"
-                        >
-
-
-                        <label for="scroll-track-color">
-                            Scroll Track
-                        </label>
-
-                        <input
-                            type="color"
-                            id="scroll-track-color"
-                            value="#f0eeeb"
-                            class="color-input"
-                        >
+                    <input
+                        type="color"
+                        id="games-color"
+                        value="#ffffff"
+                        class="color-input"
+                    >
 
 
-                        <label for="font-color">
-                            Text
-                        </label>
+                    <label for="hover-color">
+                        Hover
+                    </label>
 
-                        <input
-                            type="color"
-                            id="font-color"
-                            value="#242220"
-                            class="color-input"
-                        >
+                    <input
+                        type="color"
+                        id="hover-color"
+                        value="#f1f2f3"
+                        class="color-input"
+                    >
 
-                    </div>
+
+                    <label for="scrollbar-color">
+                        Scrollbar
+                    </label>
+
+                    <input
+                        type="color"
+                        id="scrollbar-color"
+                        value="#c7c9cc"
+                        class="color-input"
+                    >
+
+
+                    <label for="scroll-track-color">
+                        Scroll Track
+                    </label>
+
+                    <input
+                        type="color"
+                        id="scroll-track-color"
+                        value="#eeeeee"
+                        class="color-input"
+                    >
+
+
+                    <label for="font-color">
+                        Text
+                    </label>
+
+                    <input
+                        type="color"
+                        id="font-color"
+                        value="#222222"
+                        class="color-input"
+                    >
 
 
                     <br>
@@ -1359,9 +1123,7 @@
                         class="save-button"
                         onclick="restoreColorChanges()"
                     >
-
                         Restore Defaults
-
                     </button>
 
 
@@ -1370,13 +1132,10 @@
                         class="save-button"
                         onclick="saveColorChanges()"
                     >
-
                         Save Changes
-
                     </button>
 
                 </div>
-
 
             </div>
 
@@ -1388,10 +1147,6 @@
 
     <!-- =====================================================
          HIDDEN PAGE LOADER
-         =====================================================
-
-         Kept because loading.js expects this element.
-         Games opened by index.js use a NEW TAB.
          ===================================================== -->
 
     <section
@@ -1410,16 +1165,7 @@
             id="gameButton"
             class="in-game-button"
         >
-
             ←
-
-            <img
-                src="imgs/icon-256-256.png"
-                width="36"
-                height="36"
-                alt="Logo"
-            >
-
         </button>
 
 
@@ -1428,9 +1174,7 @@
             id="refresh"
             class="in-game-button"
         >
-
             ↻
-
         </button>
 
     </section>
@@ -1451,29 +1195,21 @@
 
             <a
                 href="#"
-                onclick="
-                    return false;
-                "
+                onclick="return false;"
             >
                 Privacy
             </a>
 
-
             <a
                 href="#"
-                onclick="
-                    return false;
-                "
+                onclick="return false;"
             >
                 Terms
             </a>
 
-
             <a
                 href="#"
-                onclick="
-                    return false;
-                "
+                onclick="return false;"
             >
                 Help
             </a>
@@ -1494,8 +1230,7 @@
     </script>
 
     <script
-        src="js/loading.js"
-        defer>
+        src="js/loading.js">
     </script>
 
     <script
