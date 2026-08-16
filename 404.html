@@ -355,41 +355,119 @@
         </div>
         <span class="wisedom"></span>
         <h6><a href="/">Return home?</a></h6>
-        <script>
-            const wiseness = [
-                'mb for this, type / on the end of the url, it will then load',
-            ];
-            const element = document.getElementsByClassName('wisedom')[0];
-            const button = document.getElementsByTagName('a')[0];
+       <script>
+    const wiseness = [
+        'type / on the end of the url, then it'll load',
+        'e.g. ampler-launcher/mc/1.5.2 becomes ampler-launcher/mc/1.5.2/'
+    ];
 
-            let currentTextIndex = 0;
-            let charIndex = 0;
+    const element =
+        document.getElementsByClassName('wisedom')[0];
 
-            function type() {
-                let text = wiseness[currentTextIndex];
-                let typeSpeed = 100;
+    const button =
+        document.getElementsByTagName('a')[0];
 
-                if (charIndex < text.length) {
-                    element.innerHTML += text.charAt(charIndex);
-                    charIndex++;
-                    setTimeout(type, typeSpeed);
-                } else {
-                    setTimeout(deleteText, 3000); // wait 1 second before deleting the text
-                }
+    let currentTextIndex = 0;
+    let charIndex = 0;
+
+    const typeSpeed = 300;
+    const deleteSpeed = 100;
+    const startDelay = 2000;
+    const displayTime = 6000;
+    const messageDelay = 1000;
+
+
+    function type() {
+
+        const text =
+            wiseness[currentTextIndex];
+
+        if (
+            charIndex < text.length
+        ) {
+
+            element.innerHTML +=
+                text.charAt(charIndex);
+
+            charIndex++;
+
+            setTimeout(
+                type,
+                typeSpeed
+            );
+
+        } else {
+
+            /*
+             * Keep the message visible
+             * for the chosen amount of time.
+             */
+            setTimeout(
+                deleteText,
+                displayTime
+            );
+        }
+    }
+
+
+    function deleteText() {
+
+        const text =
+            wiseness[currentTextIndex];
+
+        if (
+            charIndex > 0
+        ) {
+
+            element.innerHTML =
+                text.substring(
+                    0,
+                    charIndex - 1
+                );
+
+            charIndex--;
+
+            setTimeout(
+                deleteText,
+                deleteSpeed
+            );
+
+        } else {
+
+            /*
+             * Move to the next message.
+             */
+            currentTextIndex++;
+
+            /*
+             * Loop back to the first message
+             * after the last one.
+             */
+            if (
+                currentTextIndex >=
+                wiseness.length
+            ) {
+
+                currentTextIndex = 0;
             }
 
-            function deleteText() {
-                let text = wiseness[currentTextIndex];
-                let deleteSpeed = 100;
+            /*
+             * Small pause before typing
+             * the next message.
+             */
+            setTimeout(
+                type,
+                messageDelay
+            );
+        }
+    }
 
-                if (charIndex > 0) {
-                    element.innerHTML = text.substring(0, charIndex - 1);
-                    charIndex--;
-                    setTimeout(deleteText, deleteSpeed);
-                }
-            }
 
-            setTimeout(type, 2000);
-        </script>
-    </body>
-</html>
+    /*
+     * Start the message loop.
+     */
+    setTimeout(
+        type,
+        startDelay
+    );
+</script>
