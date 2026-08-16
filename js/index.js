@@ -38,11 +38,15 @@ function onInput(selector, callback) {
 }
 
 function goToGames() {
-    currentMenu.hide();
-    $('.games').show();
-    currentMenu = $('.games');
-}
+    $('#page-loader').hide();
+    $('#everything-else').show();
 
+    $('.homepage').hide();
+    $('.games').show();
+
+    currentMenu = $('.games');
+    inGame = false;
+}
 /* =========================================================
    GAME URL FIX
    ========================================================= */
@@ -136,28 +140,21 @@ function fixGameUrl(url) {
 /* =========================================================
    OPEN GAME
    ========================================================= */
-
 function openGameInNewTab(gameUrl) {
 
     if (!gameUrl) {
         return;
     }
 
-
-    gameUrl =
-        fixGameUrl(gameUrl);
-
+    gameUrl = fixGameUrl(gameUrl);
 
     let fullUrl;
 
-
     try {
-
-        fullUrl =
-            new URL(
-                gameUrl,
-                window.location.origin
-            ).href;
+        fullUrl = new URL(
+            gameUrl,
+            window.location.origin
+        ).href;
 
     } catch (error) {
 
@@ -170,17 +167,9 @@ function openGameInNewTab(gameUrl) {
         return;
     }
 
-
-    /*
-     * Make absolutely sure local game directories
-     * have a trailing slash.
-     */
-
     try {
 
-        const parsed =
-            new URL(fullUrl);
-
+        const parsed = new URL(fullUrl);
 
         if (
             parsed.pathname.startsWith('/games/') &&
@@ -197,9 +186,7 @@ function openGameInNewTab(gameUrl) {
             }
         }
 
-
-        fullUrl =
-            parsed.href;
+        fullUrl = parsed.href;
 
     } catch (error) {
 
@@ -209,30 +196,23 @@ function openGameInNewTab(gameUrl) {
         );
     }
 
-
     console.log(
         'Opening game:',
         fullUrl
     );
 
+    /*
+     * Open game in a new tab.
+     */
+    const newTab = window.open(
+        fullUrl,
+        '_blank'
+    );
 
     /*
-     * Open the actual game in a NEW TAB.
+     * If popup blocking prevents the tab
+     * from opening, stay where we are.
      */
-
-    const newTab =
-        window.open(
-            fullUrl,
-            '_blank'
-        );
-
-     goToGames();
-   
-    /*
-     * If popup blocking prevents the tab from opening,
-     * don't change the current page.
-     */
-
     if (!newTab) {
 
         alert(
@@ -242,36 +222,20 @@ function openGameInNewTab(gameUrl) {
         return;
     }
 
-
     /*
-     * Prevent the new tab from controlling the
-     * original MonkeyGG2 tab.
+     * Prevent the new tab from controlling
+     * the original tab.
      */
-
     try {
-
-        newTab.opener =
-            null;
-
+        newTab.opener = null;
     } catch (error) {
-
         // Ignore
     }
 
-
     /*
-     * IMPORTANT:
-     *
-     * The ORIGINAL tab now switches back to the
-     * Games menu.
-     *
-     * This does NOT change the URL.
-     *
-     * It simply hides whatever menu was open and
-     * displays .games again.
+     * Return the ORIGINAL tab to the Games menu.
      */
-
-    openGamesMenuOnStartup();
+    goToGames();
 }
 
 
