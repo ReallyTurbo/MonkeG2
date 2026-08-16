@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="en-au">
+<html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
 
     <meta
@@ -14,59 +13,12 @@
 
     <meta
         name="description"
-        content="Play browser games online."
+        content="Play games online"
     >
 
     <meta
         name="theme-color"
-        content="#f5f5f5"
-    >
-
-    <!-- =====================================================
-         GOOGLE ANALYTICS
-         ===================================================== -->
-
-    <script
-        async
-        src="https://www.googletagmanager.com/gtag/js?id=G-5937MNQKK5">
-    </script>
-
-    <script>
-
-        window.dataLayer =
-            window.dataLayer || [];
-
-        function gtag() {
-            dataLayer.push(arguments);
-        }
-
-        gtag(
-            'js',
-            new Date()
-        );
-
-        gtag(
-            'config',
-            'G-5937MNQKK5'
-        );
-
-    </script>
-
-
-    <!-- =====================================================
-         PRELOADS
-         ===================================================== -->
-
-    <link
-        href="js/loading.js"
-        rel="preload"
-        as="script"
-    >
-
-    <link
-        href="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"
-        rel="preload"
-        as="script"
+        content="#faf8f6"
     >
 
     <link
@@ -76,15 +28,10 @@
     >
 
     <link
-        href="js/config.js"
-        rel="prefetch"
+        href="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"
+        rel="preload"
         as="script"
     >
-
-
-    <!-- =====================================================
-         STYLES
-         ===================================================== -->
 
     <link
         href="css/loading.css"
@@ -97,39 +44,15 @@
         rel="stylesheet"
         type="text/css"
     >
-
-
-    <!-- =====================================================
-         FAVICON
-         ===================================================== -->
-
-    <link
-        rel="icon"
-        href="imgs/icon-256-256.png"
-        type="image/png"
-    >
-
 </head>
-
 
 <body>
 
-
-    <!-- =====================================================
-         NOSCRIPT
-         ===================================================== -->
-
     <noscript>
-
-        <div id="noscript-text">
-
-            This site requires JavaScript
-            to be enabled.
-
-        </div>
-
+        <p id="noscript-text">
+            This site requires JavaScript.
+        </p>
     </noscript>
-
 
     <!-- =====================================================
          LOADING SCREEN
@@ -185,7 +108,6 @@
 
                         </linearGradient>
 
-
                         <linearGradient
                             id="grad2"
                             x1="1"
@@ -218,7 +140,6 @@
 
                     </defs>
 
-
                     <g
                         fill="none"
                         stroke-linecap="round"
@@ -232,14 +153,13 @@
 
                             <path
                                 d="M8,64s0-56,60-56,60,112,120,112,60-56,60-56"
-                            />
+                            ></path>
 
                             <path
                                 d="M248,64s0-56-60-56-60,112-120,112S8,64,8,64"
-                            />
+                            ></path>
 
                         </g>
-
 
                         <g stroke-dasharray="180 656">
 
@@ -248,14 +168,14 @@
                                 stroke="url(#grad1)"
                                 stroke-dashoffset="0"
                                 d="M8,64s0-56,60-56,60,112,120,112,60-56,60-56"
-                            />
+                            ></path>
 
                             <path
                                 class="worm2"
                                 stroke="url(#grad2)"
                                 stroke-dashoffset="358"
                                 d="M248,64s0-56-60-56-60,112-120,112S8,64,8,64"
-                            />
+                            ></path>
 
                         </g>
 
@@ -267,157 +187,98 @@
 
         </div>
 
-
         <div class="loading-icon">
 
             <img
                 src="imgs/icon-256-256.png"
-                alt="Loading"
+                alt="School Terminal"
             >
 
         </div>
 
     </div>
 
-
     <!-- =====================================================
-         MAIN SITE
+         EVERYTHING
          ===================================================== -->
 
     <section id="everything-else">
 
-
         <!-- =================================================
-             SIDEBAR
+             LEFT NAVIGATION
              ================================================= -->
 
         <nav class="portal-nav">
 
-            <button
-                type="button"
-                class="portal-brand"
-                onclick="goToGames()"
-                title="Games"
-            >
+            <div class="portal-brand">
                 ST
-            </button>
-
-
-            <button
-                type="button"
-                class="portal-nav-button"
-                onclick="
-                    goToGames();
-
-                    setTimeout(function () {
-
-                        const search =
-                            document.getElementById('search');
-
-                        if (search) {
-                            search.focus();
-                        }
-
-                    }, 50);
-                "
-                title="Search"
-            >
-                🔍
-            </button>
-
+            </div>
 
             <button
-                type="button"
-                class="portal-nav-button active"
-                onclick="goToGames()"
+                class="active portal-nav-button"
+                data-nav="games"
                 title="Games"
             >
                 🎮
             </button>
 
-
             <button
-                type="button"
-                class="portal-nav-button category-nav"
-                data-category-nav="action"
-                title="Action"
+                class="portal-nav-button"
+                data-nav="recent"
+                title="Recently Played"
             >
-                ⚔️
+                🕘
             </button>
 
+            <button
+                class="portal-nav-button"
+                data-nav="arcade"
+                title="Arcade"
+            >
+                🕹️
+            </button>
 
             <button
-                type="button"
-                class="portal-nav-button category-nav"
-                data-category-nav="puzzle"
+                class="portal-nav-button"
+                data-nav="puzzle"
                 title="Puzzle"
             >
                 🧩
             </button>
 
-
             <button
-                type="button"
-                class="portal-nav-button category-nav"
-                data-category-nav="sports"
+                class="portal-nav-button"
+                data-nav="sports"
                 title="Sports"
             >
                 🏀
             </button>
 
-
             <button
-                type="button"
-                class="portal-nav-button category-nav"
-                data-category-nav="racing"
-                title="Racing"
-            >
-                🏁
-            </button>
-
-
-            <button
-                type="button"
-                class="portal-nav-button category-nav"
-                data-category-nav="multiplayer"
-                title="Multiplayer"
-            >
-                👥
-            </button>
-
-
-            <button
-                type="button"
-                class="portal-nav-button category-nav"
-                data-category-nav="adventure"
-                title="Adventure"
-            >
-                🗺️
-            </button>
-
-
-            <button
-                type="button"
                 class="portal-nav-button"
-                onclick="goToSettings()"
-                title="Settings"
+                data-nav="action"
+                title="Action"
             >
-                ⚙️
+                ⚡
+            </button>
+
+            <button
+                class="portal-nav-button"
+                data-nav="favorites"
+                title="Favorites"
+            >
+                ★
             </button>
 
         </nav>
 
-
         <!-- =================================================
-             TOP BAR
+             TOP HEADER
              ================================================= -->
 
         <header class="portal-topbar">
 
-            <div
-                class="portal-logo"
-                onclick="goToGames()"
-            >
+            <div class="portal-logo">
 
                 <div class="portal-logo-mark">
                     ST
@@ -429,67 +290,30 @@
 
             </div>
 
-
             <div class="portal-actions">
 
                 <button
-                    type="button"
                     class="portal-action"
-                    onclick="
-                        goToGames();
-
-                        setTimeout(function () {
-
-                            const search =
-                                document.getElementById('search');
-
-                            if (search) {
-                                search.focus();
-                            }
-
-                        }, 50);
-                    "
-                    title="Search"
-                >
-                    🔍
-                </button>
-
-
-                <button
-                    type="button"
-                    class="portal-action"
-                    onclick="goToSettings()"
+                    id="settingsTopButton"
                     title="Settings"
                 >
-                    ⚙️
+                    ⚙
                 </button>
 
-
-                <div
-                    class="portal-avatar"
-                    title="Profile"
+                <button
+                    class="portal-action"
+                    title="Notifications"
                 >
+                    ♧
+                </button>
+
+                <div class="portal-avatar">
                     🙂
                 </div>
 
             </div>
 
         </header>
-
-
-        <!-- =================================================
-             DISABLED DIALOG
-             ================================================= -->
-
-        <dialog id="disabled">
-
-            <div>
-                This feature has been disabled
-                by whoever is hosting this instance.
-            </div>
-
-        </dialog>
-
 
         <!-- =================================================
              CLOAK
@@ -501,23 +325,18 @@
                 Press to Continue
             </h1>
 
-            <p class="cloaker">
-                ENABLE POPUPS SO CLOAK
-                CAN OPEN AUTOMATICALLY
-            </p>
+            <h3 class="cloaker">
+                ENABLE POPUPS, SO IT'LL AUTO OPEN CLOAK
+            </h3>
 
-            <button
-                type="button"
-                id="disableCloak"
-            >
-                Continue
-            </button>
+            <span id="disableCloak">
+                POP UP IN THE TOP RIGHT CORNER
+            </span>
 
         </div>
 
-
         <!-- =================================================
-             WELCOME PAGE
+             HOMEPAGE
              ================================================= -->
 
         <div class="homepage">
@@ -526,256 +345,253 @@
 
                 <div class="welcome-text">
 
-                    <div class="welcome-small">
+                    <span class="welcome-small">
                         SCHOOL TERMINAL
-                    </div>
-
+                    </span>
 
                     <h1>
-                        Ready for a quick break?
+                        Welcome back.
                     </h1>
 
-
                     <p>
-                        Discover browser games across
-                        arcade, action, sports, racing,
-                        puzzle and adventure.
+                        Take a quick break and discover something fun to play.
                     </p>
 
-
                     <button
-                        type="button"
                         class="welcome-play-button"
-                        onclick="goToGames()"
+                        data-open-games
                     >
                         Browse Games
                     </button>
 
                 </div>
 
-
                 <div class="welcome-art">
-
-                    <div
-                        class="welcome-circle circle-one"
-                    ></div>
-
-                    <div
-                        class="welcome-circle circle-two"
-                    ></div>
-
-                    <div
-                        class="welcome-circle circle-three"
-                    ></div>
 
                     <div class="welcome-controller">
                         🎮
                     </div>
 
+                    <div class="welcome-circle circle-one"></div>
+                    <div class="welcome-circle circle-two"></div>
+                    <div class="welcome-circle circle-three"></div>
+
                 </div>
 
             </div>
 
         </div>
 
-
         <!-- =================================================
-             GAMES PAGE
+             GAMES
              ================================================= -->
 
         <div class="games">
 
+            <!-- Welcome -->
 
             <div class="portal-welcome">
 
-                <h1>
-                    Games picked just for you
-                </h1>
+                <div>
 
-                <p>
-                    Find something fun to play.
-                </p>
+                    <h1>
+                        Welcome to School Terminal
+                    </h1>
 
-            </div>
-
-
-            <!-- SEARCH -->
-
-            <div class="games-top-tools">
-
-                <div class="searchbar">
-
-                    <input
-                        type="text"
-                        id="search"
-                        placeholder="Search games..."
-                        autocomplete="off"
-                    >
-
-
-                    <select id="sort">
-
-                        <option value="alphabetical">
-                            A-Z
-                        </option>
-
-                        <option value="reverse">
-                            Z-A
-                        </option>
-
-                    </select>
-
-
-                    <button
-                        type="button"
-                        class="randgame"
-                        onclick="randomGame()"
-                    >
-                        🎲 Random Game
-                    </button>
+                    <p>
+                        Find something fun to play.
+                    </p>
 
                 </div>
 
             </div>
 
+            <!-- Categories -->
 
-            <!-- GAMES -->
+            <div class="category-bar">
 
-            <div class="games-content">
+                <button
+                    class="category-button active"
+                    data-category="all"
+                >
+                    All Games
+                </button>
 
+                <button
+                    class="category-button"
+                    data-category="arcade"
+                >
+                    Arcade
+                </button>
 
-                <!-- CATEGORY SIDEBAR -->
+                <button
+                    class="category-button"
+                    data-category="action"
+                >
+                    Action
+                </button>
 
-                <aside class="game-category-sidebar">
+                <button
+                    class="category-button"
+                    data-category="adventure"
+                >
+                    Adventure
+                </button>
 
-                    <h3>
-                        Categories
-                    </h3>
+                <button
+                    class="category-button"
+                    data-category="puzzle"
+                >
+                    Puzzle
+                </button>
 
+                <button
+                    class="category-button"
+                    data-category="sports"
+                >
+                    Sports
+                </button>
 
-                    <div
-                        id="categoryList"
-                        class="category-list"
-                    ></div>
+                <button
+                    class="category-button"
+                    data-category="racing"
+                >
+                    Racing
+                </button>
 
-                </aside>
+                <button
+                    class="category-button"
+                    data-category="platformer"
+                >
+                    Platformer
+                </button>
 
+                <button
+                    class="category-button"
+                    data-category="multiplayer"
+                >
+                    Multiplayer
+                </button>
 
-                <!-- GAME SECTIONS -->
+                <button
+                    class="category-button"
+                    data-category="retro"
+                >
+                    Retro
+                </button>
 
-                <div class="game-sections">
+            </div>
 
+            <!-- Search -->
 
-                    <!-- RECENTLY PLAYED -->
+            <div class="searchbar">
 
-                    <section
-                        class="game-section"
-                        id="recentSection"
-                    >
+                <input
+                    type="text"
+                    id="search"
+                    placeholder="Search games..."
+                    autocomplete="off"
+                >
 
-                        <div
-                            class="game-section-header"
-                        >
+                <select id="sort">
 
-                            <h2>
-                                Recently played
-                            </h2>
+                    <option value="alphabetical">
+                        A-Z
+                    </option>
 
-                        </div>
+                    <option value="reverse">
+                        Z-A
+                    </option>
 
+                </select>
 
-                        <div
-                            id="recentGames"
-                            class="game-grid recent-grid"
-                        ></div>
+                <button
+                    type="button"
+                    class="randgame"
+                    id="randomGame"
+                >
+                    🎲 Random Game
+                </button>
 
-                    </section>
+            </div>
 
+            <!-- Featured -->
 
-                    <!-- FEATURED -->
+            <section class="game-section">
 
-                    <section class="game-section">
+                <div class="game-section-header">
 
-                        <div
-                            class="game-section-header"
-                        >
-
-                            <h2>
-                                Games picked for you
-                            </h2>
-
-                            <p>
-                                Popular picks
-                            </p>
-
-                        </div>
-
-
-                        <div
-                            id="featuredGames"
-                            class="game-grid featured-grid"
-                        ></div>
-
-                    </section>
-
-
-                    <!-- MORE GAMES -->
-
-                    <section class="game-section">
-
-                        <div
-                            class="game-section-header"
-                        >
-
-                            <h2>
-                                More games to discover
-                            </h2>
-
-                            <p>
-                                Explore the library
-                            </p>
-
-                        </div>
-
-
-                        <div
-                            id="newGames"
-                            class="game-grid"
-                        ></div>
-
-                    </section>
-
-
-                    <!-- ALL GAMES -->
-
-                    <section class="game-section">
-
-                        <div
-                            class="game-section-header"
-                        >
-
-                            <h2>
-                                All games
-                            </h2>
-
-                            <p>
-                                Browse the full library
-                            </p>
-
-                        </div>
-
-
-                        <ul id="gamesList"></ul>
-
-                    </section>
-
+                    <h2>
+                        Games picked just for you
+                    </h2>
 
                 </div>
 
-            </div>
+                <div
+                    id="featuredGames"
+                    class="game-grid featured-game-grid"
+                ></div>
+
+            </section>
+
+            <!-- Recently played -->
+
+            <section
+                class="game-section"
+                id="recentSection"
+            >
+
+                <div class="game-section-header">
+
+                    <h2>
+                        Recently played
+                    </h2>
+
+                </div>
+
+                <div
+                    id="recentGames"
+                    class="game-grid"
+                ></div>
+
+            </section>
+
+            <!-- New games -->
+
+            <section class="game-section">
+
+                <div class="game-section-header">
+
+                    <h2>
+                        New games we love
+                    </h2>
+
+                </div>
+
+                <div
+                    id="newGames"
+                    class="game-grid"
+                ></div>
+
+            </section>
+
+            <!-- All games -->
+
+            <section class="game-section">
+
+                <div class="game-section-header">
+
+                    <h2>
+                        All games
+                    </h2>
+
+                </div>
+
+                <ul id="gamesList"></ul>
+
+            </section>
 
         </div>
-
 
         <!-- =================================================
              SETTINGS
@@ -789,21 +605,15 @@
                     Settings
                 </h4>
 
-                <p>
+                <h6>
                     Customize your School Terminal experience.
-                </p>
-
+                </h6>
 
                 <div class="setting">
-
-                    <h5>
-                        Game Data
-                    </h5>
 
                     <button
                         class="save-button"
                         id="download"
-                        type="button"
                     >
                         Download Game Data
                     </button>
@@ -811,7 +621,6 @@
                     <button
                         class="save-button"
                         id="upload"
-                        type="button"
                     >
                         Upload Game Data
                     </button>
@@ -820,50 +629,15 @@
 
                 </div>
 
-
-                <div class="setting">
-
-                    <h5>
-                        Cloak and Mask Presets
-                    </h5>
-
-                    <select id="presets">
-
-                        <option value="classroom">
-                            Google Classroom
-                        </option>
-
-                        <option value="drive">
-                            Google Drive
-                        </option>
-
-                        <option value="mail">
-                            Google Mail
-                        </option>
-
-                        <option value="canvas">
-                            Canvas
-                        </option>
-
-                    </select>
-
-
-                    <button
-                        type="button"
-                        class="submit-button"
-                        onclick="updatePreset()"
-                    >
-                        Submit
-                    </button>
-
-                </div>
-
-
                 <div class="setting">
 
                     <h5>
                         Cloak
                     </h5>
+
+                    <p>
+                        Open the site inside another page.
+                    </p>
 
                     <label class="switch">
 
@@ -874,17 +648,12 @@
                         >
 
                         <div class="switch__wrapper">
-
-                            <div
-                                class="switch__toggle"
-                            ></div>
-
+                            <div class="switch__toggle"></div>
                         </div>
 
                     </label>
 
                 </div>
-
 
                 <div class="setting">
 
@@ -900,7 +669,6 @@
                     >
 
                     <button
-                        type="button"
                         id="cloakUrlSubmit"
                         class="submit-button"
                     >
@@ -909,12 +677,15 @@
 
                 </div>
 
-
                 <div class="setting">
 
                     <h5>
                         Mask
                     </h5>
+
+                    <p>
+                        Change the title and icon shown in the browser tab.
+                    </p>
 
                     <label class="switch">
 
@@ -925,17 +696,12 @@
                         >
 
                         <div class="switch__wrapper">
-
-                            <div
-                                class="switch__toggle"
-                            ></div>
-
+                            <div class="switch__toggle"></div>
                         </div>
 
                     </label>
 
                 </div>
-
 
                 <div class="setting">
 
@@ -951,7 +717,6 @@
                     >
 
                     <button
-                        type="button"
                         id="maskTitleSubmit"
                         class="submit-button"
                     >
@@ -959,7 +724,6 @@
                     </button>
 
                 </div>
-
 
                 <div class="setting">
 
@@ -971,11 +735,10 @@
                         id="maskIconInput"
                         class="text-field"
                         type="text"
-                        placeholder="https://example.com/icon.png"
+                        placeholder="https://..."
                     >
 
                     <button
-                        type="button"
                         id="maskIconSubmit"
                         class="submit-button"
                     >
@@ -983,7 +746,6 @@
                     </button>
 
                 </div>
-
 
                 <div class="setting">
 
@@ -1000,24 +762,18 @@
                         >
 
                         <div class="switch__wrapper">
-
-                            <div
-                                class="switch__toggle"
-                            ></div>
-
+                            <div class="switch__toggle"></div>
                         </div>
 
                     </label>
 
                 </div>
 
+                <h4>
+                    Appearance
+                </h4>
 
                 <div class="setting">
-
-                    <h5>
-                        Custom Theme
-                    </h5>
-
 
                     <label for="bg">
                         Background
@@ -1026,10 +782,11 @@
                     <input
                         type="color"
                         id="bg"
-                        value="#f5f5f5"
+                        value="#faf8f6"
                         class="color-input"
                     >
 
+                    <br>
 
                     <label for="block-color">
                         Block
@@ -1042,6 +799,7 @@
                         class="color-input"
                     >
 
+                    <br>
 
                     <label for="button-color">
                         Buttons
@@ -1054,6 +812,7 @@
                         class="color-input"
                     >
 
+                    <br>
 
                     <label for="games-color">
                         Games
@@ -1066,6 +825,7 @@
                         class="color-input"
                     >
 
+                    <br>
 
                     <label for="hover-color">
                         Hover
@@ -1074,10 +834,11 @@
                     <input
                         type="color"
                         id="hover-color"
-                        value="#f1f2f3"
+                        value="#f1efed"
                         class="color-input"
                     >
 
+                    <br>
 
                     <label for="scrollbar-color">
                         Scrollbar
@@ -1086,10 +847,11 @@
                     <input
                         type="color"
                         id="scrollbar-color"
-                        value="#c7c9cc"
+                        value="#c7c2bd"
                         class="color-input"
                     >
 
+                    <br>
 
                     <label for="scroll-track-color">
                         Scroll Track
@@ -1098,10 +860,11 @@
                     <input
                         type="color"
                         id="scroll-track-color"
-                        value="#eeeeee"
+                        value="#f4f2f0"
                         class="color-input"
                     >
 
+                    <br>
 
                     <label for="font-color">
                         Text
@@ -1110,25 +873,20 @@
                     <input
                         type="color"
                         id="font-color"
-                        value="#222222"
+                        value="#252525"
                         class="color-input"
                     >
 
-
                     <br>
 
-
                     <button
-                        type="button"
                         class="save-button"
                         onclick="restoreColorChanges()"
                     >
                         Restore Defaults
                     </button>
 
-
                     <button
-                        type="button"
                         class="save-button"
                         onclick="saveColorChanges()"
                     >
@@ -1141,83 +899,67 @@
 
         </div>
 
+        <!-- =================================================
+             FOOTER
+             ================================================= -->
+
+        <footer class="portal-footer">
+
+            <span>
+                © 2026 School Terminal
+            </span>
+
+            <div>
+
+                <a href="#">
+                    Privacy
+                </a>
+
+                <a href="#">
+                    Terms
+                </a>
+
+                <a href="#">
+                    About
+                </a>
+
+                <a href="#">
+                    •••
+                </a>
+
+            </div>
+
+        </footer>
 
     </section>
 
-
     <!-- =====================================================
-         HIDDEN PAGE LOADER
+         PAGE LOADER
          ===================================================== -->
 
-    <section
-        id="page-loader"
-        aria-hidden="true"
-        style="display:none;"
-    >
+    <section id="page-loader">
 
-        <iframe
-            title="Game Loader"
-        ></iframe>
-
+        <iframe></iframe>
 
         <button
-            type="button"
             id="gameButton"
             class="in-game-button"
         >
+
             ←
+
         </button>
 
-
         <button
-            type="button"
             id="refresh"
             class="in-game-button"
         >
+
             ↻
+
         </button>
 
     </section>
-
-
-    <!-- =====================================================
-         FOOTER
-         ===================================================== -->
-
-    <footer class="portal-footer">
-
-        <span>
-            © 2026 School Terminal
-        </span>
-
-
-        <div>
-
-            <a
-                href="#"
-                onclick="return false;"
-            >
-                Privacy
-            </a>
-
-            <a
-                href="#"
-                onclick="return false;"
-            >
-                Terms
-            </a>
-
-            <a
-                href="#"
-                onclick="return false;"
-            >
-                Help
-            </a>
-
-        </div>
-
-    </footer>
-
 
     <!-- =====================================================
          SCRIPTS
@@ -1225,29 +967,27 @@
 
     <script src="js/config.js"></script>
 
-    <script
-        src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js">
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 
     <script
-        src="js/loading.js">
-    </script>
+        src="js/loading.js"
+        defer
+    ></script>
 
     <script
         src="https://cdn.jsdelivr.net/npm/p5@1.8.0/lib/p5.min.js"
-        defer>
-    </script>
+        defer
+    ></script>
 
     <script
         src="js/bg.js"
-        defer>
-    </script>
+        defer
+    ></script>
 
     <script
         src="js/index.js"
-        defer>
-    </script>
-
+        defer
+    ></script>
 
 </body>
 
