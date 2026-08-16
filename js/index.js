@@ -71,12 +71,39 @@ function fixGameUrl(url) {
 
     url = String(url).trim();
 
+    // Remove accidental whitespace.
     url = url.replace(/\u3000/g, '');
 
     /*
-     * Absolute URLs
+     * Eaglercraft special case.
+     *
+     * Eaglercraft versions such as:
+     *
+     * /games/ampler-launcher/mc/1.5.2
+     * /games/ampler-launcher/mc/1.8.8
+     * /games/ampler-launcher/mc/1.12.2
+     *
+     * are DIRECTORIES, not files.
+     *
+     * Therefore they MUST end with /.
      */
+    if (
+        url.includes('/games/ampler-launcher/mc/') &&
+        !url.endsWith('/')
+    ) {
+        url += '/';
 
+        console.log(
+            '[EAGLERCRAFT] Added trailing slash:',
+            url
+        );
+
+        return url;
+    }
+
+    /*
+     * Absolute URLs.
+     */
     if (
         url.startsWith('http://') ||
         url.startsWith('https://')
@@ -86,6 +113,32 @@ function fixGameUrl(url) {
 
             const parsed = new URL(url);
 
+            /*
+             * Eaglercraft absolute URL.
+             */
+            if (
+                parsed.pathname.includes(
+                    '/games/ampler-launcher/mc/'
+                ) &&
+                !parsed.pathname.endsWith('/')
+            ) {
+
+                parsed.pathname += '/';
+
+                console.log(
+                    '[EAGLERCRAFT] Fixed absolute URL:',
+                    parsed.toString()
+                );
+
+                return parsed.toString();
+            }
+
+
+            /*
+             * Other local game directories.
+             *
+             * Known file extensions are treated as files.
+             */
             if (
                 parsed.pathname.startsWith('/games/') &&
                 !parsed.pathname.endsWith('/')
@@ -96,17 +149,58 @@ function fixGameUrl(url) {
                         parsed.pathname.lastIndexOf('/') + 1
                     );
 
-                /*
-                 * Don't modify actual files.
-                 */
-                if (!lastPart.includes('.')) {
+
+                const fileExtensions = [
+                    '.html',
+                    '.htm',
+                    '.js',
+                    '.css',
+                    '.json',
+                    '.png',
+                    '.jpg',
+                    '.jpeg',
+                    '.gif',
+                    '.webp',
+                    '.svg',
+                    '.ico',
+                    '.mp3',
+                    '.wav',
+                    '.ogg',
+                    '.mp4',
+                    '.webm',
+                    '.wasm',
+                    '.xml',
+                    '.txt'
+                ];
+
+
+                const isFile =
+                    fileExtensions.some(
+                        function (extension) {
+
+                            return lastPart
+                                .toLowerCase()
+                                .endsWith(extension);
+
+                        }
+                    );
+
+
+                if (!isFile) {
                     parsed.pathname += '/';
                 }
             }
 
+
             return parsed.toString();
 
         } catch (error) {
+
+            console.error(
+                'Could not parse game URL:',
+                url,
+                error
+            );
 
             return url;
         }
@@ -114,9 +208,8 @@ function fixGameUrl(url) {
 
 
     /*
-     * Relative game URLs
+     * Relative game URLs.
      */
-
     if (url.startsWith('/games/')) {
 
         const lastPart =
@@ -124,18 +217,54 @@ function fixGameUrl(url) {
                 url.lastIndexOf('/') + 1
             );
 
+
+        const fileExtensions = [
+            '.html',
+            '.htm',
+            '.js',
+            '.css',
+            '.json',
+            '.png',
+            '.jpg',
+            '.jpeg',
+            '.gif',
+            '.webp',
+            '.svg',
+            '.ico',
+            '.mp3',
+            '.wav',
+            '.ogg',
+            '.mp4',
+            '.webm',
+            '.wasm',
+            '.xml',
+            '.txt'
+        ];
+
+
+        const isFile =
+            fileExtensions.some(
+                function (extension) {
+
+                    return lastPart
+                        .toLowerCase()
+                        .endsWith(extension);
+
+                }
+            );
+
+
         if (
-            !lastPart.includes('.') &&
+            !isFile &&
             !url.endsWith('/')
         ) {
-
             url += '/';
         }
     }
 
+
     return url;
 }
-
 
 /* =========================================================
    OPEN GAME
