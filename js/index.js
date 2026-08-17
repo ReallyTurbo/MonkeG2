@@ -801,24 +801,7 @@ function updatePreset() {
 }
 
 if (preferences.cloak && window.location.href == window.top.location.href) {
-    if (popupsAllowed()) {
-        makecloak();
-    } else {
-        currentMenu.fadeOut(300, () => {
-            $('.cloaklaunch').fadeIn(200);
-        });
-        currentMenu = $('.cloaklaunch');
-        document.addEventListener('click', (event) => {
-            if (event.target.id == 'disableCloak') {
-                $('.cloaklaunch').fadeOut(200);
-                setTimeout(returnHome, 200);
-                return;
-            }
-            if (event.target.className != 'cloaklaunch' && event.target.className != 'cloaker') return;
-            event.preventDefault();
-            makecloak();
-        });
-    }
+    makecloak();
 }
 
 maskCheckbox.addEventListener('change', function () {
